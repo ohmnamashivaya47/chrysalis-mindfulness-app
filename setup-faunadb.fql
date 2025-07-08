@@ -1,0 +1,131 @@
+/* 
+FaunaDB Database Setup Script for CHRYSALIS PRESENCE
+
+Run this in your FaunaDB shell to create the database schema:
+https://dashboard.fauna.com/
+
+Or save as setup-fauna.fql and import it
+*/
+
+// Create Collections
+CreateCollection({name: "users"})
+CreateCollection({name: "presence_sessions"})
+CreateCollection({name: "wisdom_quotes"})
+CreateCollection({name: "friendships"})
+CreateCollection({name: "user_stats"})
+
+// Create Indexes
+CreateIndex({
+  name: "users_by_email",
+  source: Collection("users"),
+  terms: [{field: ["data", "email"]}],
+  unique: true
+})
+
+CreateIndex({
+  name: "sessions_by_user",
+  source: Collection("presence_sessions"),
+  terms: [{field: ["data", "user_id"]}]
+})
+
+CreateIndex({
+  name: "active_quotes",
+  source: Collection("wisdom_quotes"),
+  terms: [{field: ["data", "is_active"]}]
+})
+
+CreateIndex({
+  name: "sessions_by_date",
+  source: Collection("presence_sessions"),
+  terms: [
+    {field: ["data", "user_id"]},
+    {field: ["data", "start_time"]}
+  ]
+})
+
+CreateIndex({
+  name: "friendships_by_user",
+  source: Collection("friendships"),
+  terms: [{field: ["data", "user_id"]}]
+})
+
+// Insert Sample Wisdom Quotes
+Create(Collection("wisdom_quotes"), {
+  data: {
+    text: "The present moment is the only moment available to us, and it is the door to all moments.",
+    author: "Thich Nhat Hanh",
+    category: "presence",
+    is_active: true,
+    created_at: Now()
+  }
+})
+
+Create(Collection("wisdom_quotes"), {
+  data: {
+    text: "Be here now.",
+    author: "Ram Dass", 
+    category: "presence",
+    is_active: true,
+    created_at: Now()
+  }
+})
+
+Create(Collection("wisdom_quotes"), {
+  data: {
+    text: "Wherever you are, be there totally.",
+    author: "Eckhart Tolle",
+    category: "presence", 
+    is_active: true,
+    created_at: Now()
+  }
+})
+
+Create(Collection("wisdom_quotes"), {
+  data: {
+    text: "The only way to live is by accepting each minute as an unrepeatable miracle.",
+    author: "Tara Brach",
+    category: "acceptance",
+    is_active: true,
+    created_at: Now()
+  }
+})
+
+Create(Collection("wisdom_quotes"), {
+  data: {
+    text: "Peace comes from within. Do not seek it without.",
+    author: "Buddha",
+    category: "inner_peace",
+    is_active: true,
+    created_at: Now()
+  }
+})
+
+Create(Collection("wisdom_quotes"), {
+  data: {
+    text: "In the end, just three things matter: How well we have lived, How well we have loved, How well we have learned to let go.",
+    author: "Jack Kornfield",
+    category: "wisdom",
+    is_active: true,
+    created_at: Now()
+  }
+})
+
+Create(Collection("wisdom_quotes"), {
+  data: {
+    text: "Mindfulness is about being fully awake in our lives. It is about perceiving the exquisite vividness of each moment.",
+    author: "Jon Kabat-Zinn",
+    category: "mindfulness",
+    is_active: true,
+    created_at: Now()
+  }
+})
+
+Create(Collection("wisdom_quotes"), {
+  data: {
+    text: "The best way to cultivate mindfulness is to sit, breathe, and observe.",
+    author: "Paramahansa Yogananda",
+    category: "practice",
+    is_active: true,
+    created_at: Now()
+  }
+})

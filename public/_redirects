@@ -1,0 +1,14 @@
+# Netlify redirects file
+# This handles client-side routing for the React app
+
+# API routes to Netlify Functions
+/api/auth/*  /.netlify/functions/auth  200
+/api/presence-sessions/*  /.netlify/functions/presence-sessions  200
+/api/wisdom-quotes/*  /.netlify/functions/wisdom-quotes  200
+
+# Optional: Redirect old URLs or create shortcuts
+/breathe  /  302
+/quotes   /  302
+
+# Redirect all other routes to index.html for React Router
+/*    /index.html   200
