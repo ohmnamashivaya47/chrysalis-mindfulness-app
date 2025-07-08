@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chrysalis API Test</title>
+</head>
+<body>
+    <h1>Chrysalis API Direct Test</h1>
+    <div id="results"></div>
+    
+    <script>
+        const API_BASE = 'https://chrysalis-mindfulness-app.onrender.com/api';
+        const results = document.getElementById('results');
+        
+        function log(message) {
+            results.innerHTML += '<p>' + message + '</p>';
+            console.log(message);
+        }
+        
+        async function testAPI() {
+            try {
+                // Test health
+                log('Testing health endpoint...');
+                const healthResponse = await fetch('https://chrysalis-mindfulness-app.onrender.com/health');
+                const health = await healthResponse.json();
+                log('✅ Health: ' + JSON.stringify(health));
+                
+                // Test registration
+                log('Testing registration...');
+                const regData = {
+                    email: `browser-test-${Date.now()}@example.com`,
+                    password: 'Test123!@#',
+                    display_name: 'Browser Test User'
+                };
+                
+                const regResponse = await fetch(API_BASE + '/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(regData)
+                });
+                
+                if (regResponse.ok) {
+                    const regResult = await regResponse.json();
+                    log('✅ Registration successful: ' + regResult.user.email);
+                    
+                    // Test login
+                    log('Testing login...');
+                    const loginResponse = await fetch(API_BASE + '/auth/login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            email: regData.email,
+                            password: regData.password
+                        })
+                    });
+                    
+                    if (loginResponse.ok) {
+                        const loginResult = await loginResponse.json();
+                        log('✅ Login successful: ' + loginResult.user.email);
+                    } else {
+                        const loginError = await loginResponse.text();
+                        log('❌ Login failed: ' + loginError);
+                    }
+                } else {
+                    const regError = await regResponse.text();
+                    log('❌ Registration failed: ' + regError);
+                }
+                
+            } catch (error) {
+                log('❌ Error: ' + error.message);
+            }
+        }
+        
+        testAPI();
+    </script>
+</body>
+</html>
