@@ -27,15 +27,15 @@ export const Header = () => {
 
           <div className="flex items-center space-x-4">
             <div className="text-right">
-              <div className="text-sm text-primary-600">Level {user?.level || 1}</div>
-              <div className="text-xs text-primary-500">{user?.experience || 0} XP</div>
+              <div className="text-sm text-primary-800 font-medium">{user?.displayName || 'User'}</div>
+              <div className="text-xs text-primary-600">Level {user?.level || 1} • {user?.experience || 0} XP</div>
             </div>
             
             <div className="flex items-center space-x-2">
               <img
                 src={user?.profilePicture || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.displayName || 'User')}&background=1B4332&color=fff`}
                 alt="Profile"
-                className="w-8 h-8 rounded-full"
+                className="w-10 h-10 rounded-full border-2 border-primary-200"
               />
               <button
                 onClick={handleSignOut}

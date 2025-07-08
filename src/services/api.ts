@@ -179,7 +179,7 @@ class ChrysalisAPIService {
 
   async uploadProfilePicture(file: File): Promise<{ user: User }> {
     const formData = new FormData();
-    formData.append('profilePicture', file);
+    formData.append('image', file); // Backend expects 'image' field
 
     const url = `${this.baseUrl}/users/upload-profile-picture`;
     
@@ -354,11 +354,12 @@ class ChrysalisAPIService {
   async createGroup(groupData: {
     name: string;
     description: string;
+    isPublic?: boolean;
     privacy_level?: string;
     max_members?: number;
     meditation_focus?: string;
-  }): Promise<{ groupId: string; message: string }> {
-    return this.request<{ groupId: string; message: string }>('/groups/create', {
+  }): Promise<{ groupId: string; code: string; message: string }> {
+    return this.request<{ groupId: string; code: string; message: string }>('/groups/create', {
       method: 'POST',
       body: JSON.stringify(groupData),
     });

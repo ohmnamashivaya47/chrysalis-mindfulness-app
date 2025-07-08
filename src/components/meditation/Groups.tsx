@@ -26,6 +26,7 @@ export const Groups = () => {
   const [showJoinModal, setShowJoinModal] = useState(false)
   const [newGroupName, setNewGroupName] = useState('')
   const [newGroupDescription, setNewGroupDescription] = useState('')
+  const [newGroupIsPublic, setNewGroupIsPublic] = useState(true)
   const [joinCode, setJoinCode] = useState('')
   const [loading, setLoading] = useState(false)
   const [feedback, setFeedback] = useState<string | null>(null)
@@ -45,14 +46,24 @@ export const Groups = () => {
   const loadGroups = useCallback(async () => {
     setLoading(true)
     try {
-      const [publicGroups, userGroups] = await Promise.all([
-        getPublicGroups(),
-        getUserGroups()
-      ])
-      setGroups(publicGroups)
-      setMyGroups(userGroups)
-    } catch (error) {
-      console.error('Error loading groups:', error)
+      // Try to load groups data, but don't crash if it fails
+      try {
+        const publicGroups = await getPublicGroups()
+        setGroups(publicGroups)
+      } catch (groupsError) {
+        console.log('Public groups not available yet:', groupsError)
+        setGroups([]) // Set empty array as fallback
+      }
+      
+      try {
+        const userGroups = await getUserGroups()
+        setMyGroups(userGroups)
+      } catch (userGroupsError) {
+        console.log('User groups not available yet:', userGroupsError)
+        setMyGroups([]) // Set empty array as fallback
+      }
+    } catch {
+      console.log('Groups feature is still loading. This is normal for new accounts.')
     }
     setLoading(false)
   }, [getPublicGroups, getUserGroups])
@@ -68,14 +79,21 @@ export const Groups = () => {
     try {
       const result = await createGroup(
         newGroupName.trim(),
-        newGroupDescription.trim(),
-        true
+        newGroupDescription.trim() || 'A mindful group for meditation practice.', // Optional description with fallback
+        newGroupIsPublic
       )
       setCreatedGroupCode(result.code || null)
       setNewGroupName('')
       setNewGroupDescription('')
+      setNewGroupIsPublic(true) // Reset to default
       setShowCreateModal(false)
-      setFeedback('Group created! Share your group code to invite others.')
+      
+      // Automatically show QR code after group creation
+      if (result.code) {
+        setShowQRModal(result.code)
+      }
+      
+      setFeedback('Group created! Your group code QR is now displayed - share it to invite others.')
       loadGroups()
     } catch (error: unknown) {
       if (error instanceof Error) {
@@ -338,6 +356,29 @@ export const Groups = () => {
                 className="w-full border border-primary-200 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-400"
                 rows={3}
               />
+              
+              {/* Public/Private Toggle */}
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div>
+                  <label className="text-sm font-medium text-gray-900">Group Visibility</label>
+                  <p className="text-xs text-gray-600">
+                    {newGroupIsPublic ? 'Public groups are visible to all users' : 'Private groups are invite-only'}
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={newGroupIsPublic}
+                    onChange={e => setNewGroupIsPublic(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+                  <span className="ml-3 text-sm font-medium text-gray-900">
+                    {newGroupIsPublic ? 'Public' : 'Private'}
+                  </span>
+                </label>
+              </div>
+              
               <Button type="submit" className="w-full">Create</Button>
             </form>
           </div>
@@ -371,23 +412,81 @@ export const Groups = () => {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-8 shadow-lg max-w-sm w-full relative">
             <button onClick={() => setShowQRModal(null)} className="absolute top-2 right-2 text-gray-400 hover:text-gray-700">×</button>
-            <h3 className="text-lg font-bold mb-2">Group QR Code</h3>
-            <p className="text-sm text-gray-600 mb-4">Scan to join this group</p>
-            <QRCodeSVG value={`${window.location.origin}/join?code=${showQRModal}`} size={200} bgColor="#F7F3E9" fgColor="#1B4332" />
-            <div className="mt-4 text-xs text-center text-gray-500">Group Code: <span className="font-mono bg-coral-200 px-2 py-1 rounded">{showQRModal}</span></div>
+            <h3 className="text-lg font-bold mb-2">Share Group</h3>
+            <p className="text-sm text-gray-600 mb-4">Share this code or QR code with friends</p>
+            
+            <div className="flex flex-col items-center space-y-4">
+              <QRCodeSVG value={`${window.location.origin}/join?code=${showQRModal}`} size={200} bgColor="#F7F3E9" fgColor="#1B4332" />
+              
+              <div className="bg-[#F7F3E9] p-4 rounded-lg w-full text-center">
+                <p className="text-sm text-[#1B4332] mb-2">Group Code:</p>
+                <p className="font-mono text-lg font-bold text-[#1B4332] bg-white px-3 py-2 rounded border-2 border-dashed border-[#1B4332]">
+                  {showQRModal}
+                </p>
+                <button 
+                  onClick={() => navigator.clipboard?.writeText(showQRModal)}
+                  className="mt-2 text-xs text-[#1B4332] hover:underline"
+                >
+                  📋 Copy Code
+                </button>
+              </div>
+              
+              <p className="text-xs text-center text-gray-500">
+                Friends can join by entering this code manually or scanning the QR code with any QR scanner app
+              </p>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Scan QR Modal */}
+      {/* Simplified Join Modal - No camera required */}
       {showScanModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-8 shadow-lg max-w-sm w-full relative">
             <button onClick={() => setShowScanModal(false)} className="absolute top-2 right-2 text-gray-400 hover:text-gray-700">×</button>
-            <h3 className="text-lg font-bold mb-2">Scan QR Code</h3>
-            <p className="text-sm text-gray-600 mb-4">Align the QR code within the frame to scan.</p>
-            <div id="qr-reader" className="w-full h-48 rounded-lg bg-gray-100 mb-4"></div>
-            <Button onClick={() => setShowScanModal(false)} className="w-full">Close</Button>
+            <h3 className="text-lg font-bold mb-4">Join Group</h3>
+            
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm text-gray-600 mb-2">Enter group code:</p>
+                <input
+                  type="text"
+                  value={joinCode}
+                  onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                  placeholder="Enter 6-digit code"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-3 text-center font-mono text-lg focus:outline-none focus:ring-2 focus:ring-[#1B4332]"
+                  maxLength={6}
+                />
+              </div>
+              
+              <div className="text-center">
+                <p className="text-xs text-gray-500 mb-2">OR</p>
+                <p className="text-sm text-gray-600">Use any QR scanner app to scan a group QR code</p>
+              </div>
+              
+              <div className="flex space-x-2">
+                <Button 
+                  onClick={() => setShowScanModal(false)} 
+                  variant="secondary" 
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={async () => {
+                    if (joinCode.trim()) {
+                      const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
+                      await handleJoinGroup(fakeEvent);
+                      setShowScanModal(false);
+                    }
+                  }}
+                  className="flex-1"
+                  disabled={!joinCode.trim()}
+                >
+                  Join
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       )}

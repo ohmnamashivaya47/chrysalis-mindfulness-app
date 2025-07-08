@@ -41,7 +41,7 @@ const authenticateToken = (req, res, next) => {
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
+    fileSize: 0.5 * 1024 * 1024, // 0.5MB limit
   },
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith('image/')) {
@@ -85,6 +85,8 @@ router.get('/profile', authenticateToken, async (req, res) => {
 router.put('/profile', authenticateToken, async (req, res) => {
   try {
     const {
+      displayName,
+      profilePicture,
       fullName,
       username,
       bio,
@@ -97,7 +99,9 @@ router.put('/profile', authenticateToken, async (req, res) => {
 
     // Map frontend fields to database columns
     const updateData = {
-      full_name: fullName,
+      display_name: displayName || fullName, // Handle both field names
+      profile_picture: profilePicture,
+      full_name: fullName || displayName, // Fallback
       username,
       bio,
       meditation_goals: meditationGoals,
@@ -191,8 +195,13 @@ router.post('/upload-profile-picture', authenticateToken, upload.single('image')
       updated_at: new Date().toISOString()
     });
 
+    // Get updated user data
+    const updatedUser = await userHelpers.findById(req.userId);
+    const { password_hash, ...userData } = updatedUser;
+
     res.json({
       success: true,
+      user: userData,
       imageUrl: uploadResponse.secure_url
     });
 

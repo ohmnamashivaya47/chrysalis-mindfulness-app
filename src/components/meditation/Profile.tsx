@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Award, Clock, Star, Crown, Trophy, Leaf, BarChart3, CheckCircle, Camera } from 'lucide-react';
+import { Award, Clock, Star, Crown, Trophy, Leaf, BarChart3, CheckCircle, Camera, QrCode, Share, Copy } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { useMeditationStore } from '../../stores/meditationStore';
 import { apiService } from '../../services/api';
-import { cloudinaryService } from '../../services/cloudinary';
+import { QRCodeSVG } from 'qrcode.react';
 
 export const Profile = () => {
   const { user, setUser } = useAuthStore();
@@ -18,6 +18,8 @@ export const Profile = () => {
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false); // NEW: loading state for save
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [showScanModal, setShowScanModal] = useState(false);
 
   // Accessibility: focus ref for skip link and live region
   const profileRef = useRef<HTMLDivElement>(null);
@@ -80,11 +82,12 @@ export const Profile = () => {
     setUploading(true);
     setSaveError(null);
     try {
-      const result = await cloudinaryService.uploadProfilePicture(file);
-      setEditForm(prev => ({ ...prev, profilePicture: result.secure_url }));
+      // Use the backend API upload endpoint instead of Cloudinary directly
+      const result = await apiService.uploadProfilePicture(file);
+      setEditForm(prev => ({ ...prev, profilePicture: result.user.profilePicture || '' }));
       setSaveSuccess('Profile picture uploaded successfully!');
     } catch (error) {
-      setSaveError('Failed to upload image. Please try again.');
+      setSaveError('Failed to upload image. Please try a smaller image or try again.');
       console.error('Upload error:', error);
     } finally {
       setUploading(false);
@@ -93,6 +96,28 @@ export const Profile = () => {
 
   const generateAvatar = (name: string) => {
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1B4332&color=fff&size=200`;
+  };
+
+  const generatePersonalQRCode = () => {
+    if (!user?.id) return '';
+    // Create a friend request URL that includes the user ID
+    const friendRequestUrl = `${window.location.origin}/friend-request/${user.id}`;
+    return friendRequestUrl;
+  };
+
+  const copyFriendCode = async () => {
+    if (!user?.id) return;
+    const friendCode = user.id; // Simple friend code is just the user ID
+    try {
+      await navigator.clipboard.writeText(friendCode);
+      setSaveSuccess('Friend code copied to clipboard!\n\u2014 Share it with others to connect mindfully.');
+    } catch (error) {
+      setSaveError('Could not copy to clipboard. Your friend code is: ' + friendCode);
+    }
+  };
+
+  const startQRScanner = () => {
+    setShowScanModal(true);
   };
 
   const stats = [
@@ -255,6 +280,64 @@ export const Profile = () => {
           </div>
         </div>
 
+        {/* Personal QR Code & Friend Connection */}
+        <div className="bg-white rounded-xl shadow-md p-8 mb-8">
+          <h3 className="text-xl font-bold text-primary-800 mb-6">Connect with Friends</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Personal QR Code */}
+            <div className="text-center">
+              <h4 className="text-lg font-semibold text-primary-800 mb-4">Your Personal QR Code</h4>
+              <div className="bg-gray-50 rounded-lg p-6 mb-4">
+                <QRCodeSVG
+                  value={generatePersonalQRCode()}
+                  size={160}
+                  bgColor="#ffffff"
+                  fgColor="#1B4332"
+                  level="M"
+                  includeMargin={true}
+                />
+              </div>
+              <p className="text-sm text-primary-600 mb-4">
+                Share this QR code for others to add you as a friend
+              </p>
+              <div className="space-y-2">
+                <button
+                  onClick={copyFriendCode}
+                  className="w-full bg-primary-100 text-primary-800 px-4 py-2 rounded-lg hover:bg-primary-200 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Copy className="w-4 h-4" />
+                  Copy Friend Code
+                </button>
+                <button
+                  onClick={() => setShowQRModal(true)}
+                  className="w-full bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors flex items-center justify-center gap-2"
+                >
+                  <QrCode className="w-4 h-4" />
+                  Show QR Code
+                </button>
+              </div>
+            </div>
+
+            {/* Scan Others' Codes */}
+            <div className="text-center">
+              <h4 className="text-lg font-semibold text-primary-800 mb-4">Add Friends</h4>
+              <div className="bg-gray-50 rounded-lg p-6 mb-4 flex items-center justify-center h-40">
+                <QrCode className="w-16 h-16 text-primary-300" />
+              </div>
+              <p className="text-sm text-primary-600 mb-4">
+                Scan a friend's QR code to connect instantly
+              </p>
+              <button
+                onClick={startQRScanner}
+                className="w-full bg-accent text-white px-4 py-2 rounded-lg hover:bg-accent/90 transition-colors flex items-center justify-center gap-2"
+              >
+                <Camera className="w-4 h-4" />
+                Scan QR Code
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* Stats Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
           {stats.map((stat, index) => (
@@ -370,6 +453,67 @@ export const Profile = () => {
             </div>
           )}
         </div>
+
+        {/* QR Code Modal */}
+        {showQRModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl p-8 max-w-sm w-full text-center">
+              <h3 className="text-xl font-bold text-primary-800 mb-4">Your Friend QR Code</h3>
+              <div className="bg-gray-50 rounded-lg p-6 mb-4">
+                <QRCodeSVG
+                  value={generatePersonalQRCode()}
+                  size={200}
+                  bgColor="#ffffff"
+                  fgColor="#1B4332"
+                  level="M"
+                  includeMargin={true}
+                />
+              </div>
+              <p className="text-sm text-primary-600 mb-4">
+                Ask your friend to scan this code to add you
+              </p>
+              <div className="space-y-2">
+                <button
+                  onClick={copyFriendCode}
+                  className="w-full bg-primary-100 text-primary-800 px-4 py-2 rounded-lg hover:bg-primary-200 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Copy className="w-4 h-4" />
+                  Copy Friend Code
+                </button>
+                <button
+                  onClick={() => setShowQRModal(false)}
+                  className="w-full bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* QR Scanner Modal */}
+        {showScanModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl p-8 max-w-sm w-full text-center">
+              <h3 className="text-xl font-bold text-primary-800 mb-4">Scan Friend's QR Code</h3>
+              <div className="bg-gray-50 rounded-lg p-6 mb-4 h-64 flex items-center justify-center">
+                <div className="text-center">
+                  <Camera className="w-16 h-16 text-primary-300 mx-auto mb-4" />
+                  <p className="text-sm text-primary-600">
+                    QR Scanner feature coming soon!<br />
+                    For now, ask your friend for their friend code.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowScanModal(false)}
+                className="w-full bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
       </motion.div>
     </>
   );

@@ -63,7 +63,7 @@ interface SocialState {
   acceptFriendRequest: (requestId: string) => Promise<void>;
   
   fetchGroups: () => Promise<void>;
-  createGroup: (name: string, description: string, isPublic?: boolean) => Promise<Group>;
+  createGroup: (name: string, description: string, isPublic?: boolean) => Promise<{ id: string; code: string }>;
   joinGroup: (groupCode: string) => Promise<void>;
   getPublicGroups: () => Promise<Group[]>;
   getUserGroups: () => Promise<Group[]>;
@@ -164,11 +164,14 @@ export const useSocialStore = create<SocialState>((set, get) => ({
       const response = await apiService.createGroup({
         name,
         description,
-        privacy_level: isPublic ? 'public' : 'private'
+        isPublic // Use the new field name that matches the frontend
       });
       // Refresh groups list
       get().fetchGroups();
-      return { id: response.groupId };
+      return { 
+        id: response.groupId, 
+        code: response.code || '' // Return the group code from backend
+      };
     } catch (error) {
       console.error('Failed to create group:', error);
       throw error;

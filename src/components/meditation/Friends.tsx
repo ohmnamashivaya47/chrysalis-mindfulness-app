@@ -81,7 +81,7 @@ const Friends: React.FC = () => {
       }
       
       // Map store data to component interfaces
-      const mappedFriends: Friend[] = storeFriends.map((friend: StoreFriend) => ({
+      const mappedFriends: Friend[] = (storeFriends || []).map((friend: StoreFriend) => ({
         id: friend.id,
         displayName: friend.name,
         profilePicture: friend.profilePicture,
@@ -91,7 +91,7 @@ const Friends: React.FC = () => {
         lastActive: friend.friendshipCreatedAt,
         isOnline: false // Default value
       }));
-      const mappedIncoming: FriendRequest[] = storeRequests.incoming.map((req: StoreFriendRequest) => ({
+      const mappedIncoming: FriendRequest[] = (storeRequests?.incoming || []).map((req: StoreFriendRequest) => ({
         id: req.id,
         fromUser: {
           id: req.requesterUserId,
@@ -106,7 +106,7 @@ const Friends: React.FC = () => {
         createdAt: req.createdAt,
         status: 'pending' as const
       }));
-      const mappedOutgoing: FriendRequest[] = storeRequests.outgoing.map((req: StoreFriendRequest) => ({
+      const mappedOutgoing: FriendRequest[] = (storeRequests?.outgoing || []).map((req: StoreFriendRequest) => ({
         id: req.id,
         fromUser: {
           id: '', // Current user
@@ -127,6 +127,10 @@ const Friends: React.FC = () => {
       // Show a friendly message but don't prevent the page from working
       console.log('Friends feature is still loading. This is normal for new accounts.');
       setError(null); // Don't show error - just keep page working
+      // Set empty arrays as fallback
+      setFriends([]);
+      setIncomingRequests([]);
+      setOutgoingRequests([]);
     } finally {
       setLoading(false);
     }

@@ -110,28 +110,33 @@ router.post('/create', authenticateToken, async (req, res) => {
     const {
       name,
       description,
+      isPublic, // From frontend
       privacy_level,
       max_members,
       meditation_focus,
       group_image
     } = req.body;
 
-    // Validate required fields
-    if (!name || !description) {
+    // Validate required fields - only name is required
+    if (!name || !name.trim()) {
       return res.status(400).json({
         success: false,
-        error: 'Name and description are required'
+        error: 'Group name is required'
       });
     }
 
+    // Generate a unique group code
+    const groupCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+
     // Create group
     const groupData = {
-      name,
-      description,
-      privacy_level: privacy_level || 'public',
+      name: name.trim(),
+      description: description?.trim() || 'A mindful group for meditation practice.',
+      privacy_level: isPublic !== undefined ? (isPublic ? 'public' : 'private') : (privacy_level || 'public'),
       max_members: max_members || 50,
       meditation_focus: meditation_focus || null,
       group_image: group_image || null,
+      group_code: groupCode,
       created_by: req.userId,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
@@ -145,6 +150,7 @@ router.post('/create', authenticateToken, async (req, res) => {
     res.status(201).json({
       success: true,
       groupId,
+      code: groupCode,
       message: 'Group created successfully'
     });
 
