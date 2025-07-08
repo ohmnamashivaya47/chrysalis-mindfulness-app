@@ -1,10 +1,27 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Chrysalis API Test</title>
+    <title>Chrysalis Registration Debug</title>
 </head>
 <body>
-    <h1>Chrysalis API Direct Test</h1>
+    <h1>Chrysalis Registration Debug Test</h1>
+    
+    <form id="testForm">
+        <div>
+            <label>Email:</label>
+            <input type="email" id="email" value="test-user@example.com" required>
+        </div>
+        <div>
+            <label>Password:</label>
+            <input type="password" id="password" value="Test123!@#" required>
+        </div>
+        <div>
+            <label>Display Name:</label>
+            <input type="text" id="displayName" value="Test User" required>
+        </div>
+        <button type="submit">Test Registration</button>
+    </form>
+    
     <div id="results"></div>
     
     <script>
@@ -16,23 +33,26 @@
             console.log(message);
         }
         
-        async function testAPI() {
+        document.getElementById('testForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const displayName = document.getElementById('displayName').value;
+            
+            // Add timestamp to email to make it unique
+            const uniqueEmail = email.replace('@', `+${Date.now()}@`);
+            
+            const regData = {
+                email: uniqueEmail,
+                password: password,
+                display_name: displayName
+            };
+            
+            log('🚀 Sending registration data: ' + JSON.stringify(regData, null, 2));
+            
             try {
-                // Test health
-                log('Testing health endpoint...');
-                const healthResponse = await fetch('https://chrysalis-mindfulness-app.onrender.com/health');
-                const health = await healthResponse.json();
-                log('✅ Health: ' + JSON.stringify(health));
-                
-                // Test registration
-                log('Testing registration...');
-                const regData = {
-                    email: `browser-test-${Date.now()}@example.com`,
-                    password: 'Test123!@#',
-                    display_name: 'Browser Test User'
-                };
-                
-                const regResponse = await fetch(API_BASE + '/auth/register', {
+                const response = await fetch(API_BASE + '/auth/register', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -40,41 +60,31 @@
                     body: JSON.stringify(regData)
                 });
                 
-                if (regResponse.ok) {
-                    const regResult = await regResponse.json();
-                    log('✅ Registration successful: ' + regResult.user.email);
-                    
-                    // Test login
-                    log('Testing login...');
-                    const loginResponse = await fetch(API_BASE + '/auth/login', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            email: regData.email,
-                            password: regData.password
-                        })
-                    });
-                    
-                    if (loginResponse.ok) {
-                        const loginResult = await loginResponse.json();
-                        log('✅ Login successful: ' + loginResult.user.email);
-                    } else {
-                        const loginError = await loginResponse.text();
-                        log('❌ Login failed: ' + loginError);
-                    }
+                log('📊 Response status: ' + response.status);
+                log('📊 Response headers: ' + JSON.stringify(Array.from(response.headers.entries())));
+                
+                const responseText = await response.text();
+                log('📊 Response body: ' + responseText);
+                
+                if (response.ok) {
+                    const result = JSON.parse(responseText);
+                    log('✅ Registration successful!');
+                    log('👤 User: ' + result.user.email);
+                    log('🔑 Token: ' + result.token.substring(0, 20) + '...');
                 } else {
-                    const regError = await regResponse.text();
-                    log('❌ Registration failed: ' + regError);
+                    log('❌ Registration failed');
+                    try {
+                        const errorResult = JSON.parse(responseText);
+                        log('❌ Error details: ' + JSON.stringify(errorResult, null, 2));
+                    } catch (e) {
+                        log('❌ Raw error: ' + responseText);
+                    }
                 }
                 
             } catch (error) {
-                log('❌ Error: ' + error.message);
+                log('❌ Network Error: ' + error.message);
             }
-        }
-        
-        testAPI();
+        });
     </script>
 </body>
 </html>
