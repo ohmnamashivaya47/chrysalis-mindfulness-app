@@ -161,10 +161,14 @@ export const useSocialStore = create<SocialState>((set, get) => ({
   // Create group
   createGroup: async (name: string, description: string, isPublic = false) => {
     try {
-      const response = await apiService.createGroup(name, description, isPublic);
+      const response = await apiService.createGroup({
+        name,
+        description,
+        privacy_level: isPublic ? 'public' : 'private'
+      });
       // Refresh groups list
       get().fetchGroups();
-      return response.group;
+      return { id: response.groupId };
     } catch (error) {
       console.error('Failed to create group:', error);
       throw error;
@@ -186,7 +190,7 @@ export const useSocialStore = create<SocialState>((set, get) => ({
   // Get public groups
   getPublicGroups: async () => {
     try {
-      const response = await apiService.getGroups();
+      const response = await apiService.getPublicGroups();
       return response.groups.filter((group: Group) => group.isPublic);
     } catch (error) {
       console.error('Failed to get public groups:', error);
