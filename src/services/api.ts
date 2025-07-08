@@ -63,7 +63,7 @@ interface LeaderboardEntry {
 class ChrysalisAPIService {
   private baseUrl = import.meta.env.DEV 
     ? 'http://localhost:3001/api'
-    : 'https://chrysalis-backend.onrender.com/api';
+    : 'https://chrysalis-mindfulness-app.onrender.com/api';
 
   private token: string | null = null;
 
