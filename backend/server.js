@@ -9,6 +9,9 @@ const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
+// Import database initialization
+const { initializeDatabase } = require('./lib/neon-db');
+
 // Import route handlers
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
@@ -114,10 +117,26 @@ app.use((req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Chrysalis Backend Server running on port ${PORT}`);
-  console.log(`📡 Health check: http://localhost:${PORT}/health`);
-  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-});
+const startServer = async () => {
+  try {
+    // Initialize database
+    console.log('📊 Initializing database...');
+    await initializeDatabase();
+    console.log('✅ Database initialized successfully');
+    
+    // Start listening
+    app.listen(PORT, () => {
+      console.log(`🚀 Chrysalis Backend Server running on port ${PORT}`);
+      console.log(`📡 Health check: http://localhost:${PORT}/health`);
+      console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+    });
+  } catch (error) {
+    console.error('❌ Failed to start server:', error);
+    process.exit(1);
+  }
+};
+
+// Start the server
+startServer();
 
 module.exports = app;
