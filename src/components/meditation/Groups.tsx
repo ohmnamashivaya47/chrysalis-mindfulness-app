@@ -1,10 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
-import { Users, Plus, Search, Crown } from 'lucide-react'
+import { Users, Plus, Search, Crown, Copy, Check } from 'lucide-react'
 import { useSocialStore } from '../../stores/socialStore'
 import { Button } from '../ui'
 import { QRCodeSVG } from 'qrcode.react';
-import { Html5Qrcode } from 'html5-qrcode';
 
 interface Group {
   id: string
@@ -32,8 +31,7 @@ export const Groups = () => {
   const [feedback, setFeedback] = useState<string | null>(null)
   const [createdGroupCode, setCreatedGroupCode] = useState<string | null>(null)
   const [showQRModal, setShowQRModal] = useState<string | null>(null);
-  const [showScanModal, setShowScanModal] = useState(false);
-  const [autoJoinCode, setAutoJoinCode] = useState<string | null>(null); // For universal join
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   const { 
     getPublicGroups, 
@@ -134,62 +132,15 @@ export const Groups = () => {
     }
   }
 
-  // Add useEffect to handle QR scan
-  useEffect(() => {
-    if (showScanModal) {
-      const qr = new Html5Qrcode('qr-reader');
-      qr.start(
-        { facingMode: 'environment' },
-        { fps: 10, qrbox: 200 },
-        async (decodedText) => {
-          setShowScanModal(false);
-          setJoinCode(decodedText);
-          try {
-            await joinGroup(decodedText);
-            setFeedback('Joined group successfully!');
-            loadGroups();
-          } catch {
-            setFeedback('Error joining group');
-          }
-          qr.stop();
-        },
-        (/* err */) => {
-          // Optionally handle scan errors
-        }
-      );
-      return () => {
-        qr.stop().catch(() => {});
-      };
+  const copyGroupCode = async (code: string) => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopiedCode(code);
+      setTimeout(() => setCopiedCode(null), 2000);
+    } catch (error) {
+      console.error('Failed to copy code:', error);
     }
-  }, [showScanModal, joinGroup, loadGroups]);
-
-  // Universal join: check for ?code= in URL on mount
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get('code');
-    if (code) {
-      setAutoJoinCode(code);
-      setShowJoinModal(true);
-      setJoinCode(code);
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-  }, []);
-
-  // After auth: if pendingJoinCode, auto-join
-  useEffect(() => {
-    if (autoJoinCode) {
-      (async () => {
-        try {
-          await joinGroup(autoJoinCode);
-          setFeedback('Joined group successfully!');
-          setAutoJoinCode(null);
-          loadGroups();
-        } catch {
-          setFeedback('Error joining group');
-        }
-      })();
-    }
-  }, [autoJoinCode, joinGroup, loadGroups]);
+  }
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
@@ -424,68 +375,26 @@ export const Groups = () => {
                   {showQRModal}
                 </p>
                 <button 
-                  onClick={() => navigator.clipboard?.writeText(showQRModal)}
-                  className="mt-2 text-xs text-[#1B4332] hover:underline"
+                  onClick={() => copyGroupCode(showQRModal)}
+                  className="mt-2 text-xs text-[#1B4332] hover:underline flex items-center justify-center gap-1 mx-auto"
                 >
-                  📋 Copy Code
+                  {copiedCode === showQRModal ? (
+                    <>
+                      <Check size={12} />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={12} />
+                      Copy Code
+                    </>
+                  )}
                 </button>
               </div>
               
               <p className="text-xs text-center text-gray-500">
                 Friends can join by entering this code manually or scanning the QR code with any QR scanner app
               </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Simplified Join Modal - No camera required */}
-      {showScanModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-8 shadow-lg max-w-sm w-full relative">
-            <button onClick={() => setShowScanModal(false)} className="absolute top-2 right-2 text-gray-400 hover:text-gray-700">×</button>
-            <h3 className="text-lg font-bold mb-4">Join Group</h3>
-            
-            <div className="space-y-4">
-              <div>
-                <p className="text-sm text-gray-600 mb-2">Enter group code:</p>
-                <input
-                  type="text"
-                  value={joinCode}
-                  onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                  placeholder="Enter 6-digit code"
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3 text-center font-mono text-lg focus:outline-none focus:ring-2 focus:ring-[#1B4332]"
-                  maxLength={6}
-                />
-              </div>
-              
-              <div className="text-center">
-                <p className="text-xs text-gray-500 mb-2">OR</p>
-                <p className="text-sm text-gray-600">Use any QR scanner app to scan a group QR code</p>
-              </div>
-              
-              <div className="flex space-x-2">
-                <Button 
-                  onClick={() => setShowScanModal(false)} 
-                  variant="secondary" 
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={async () => {
-                    if (joinCode.trim()) {
-                      const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
-                      await handleJoinGroup(fakeEvent);
-                      setShowScanModal(false);
-                    }
-                  }}
-                  className="flex-1"
-                  disabled={!joinCode.trim()}
-                >
-                  Join
-                </Button>
-              </div>
             </div>
           </div>
         </div>
