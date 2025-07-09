@@ -45,6 +45,16 @@ export const Profile = () => {
     getSessionHistory().catch(console.error);
   }, [getSessionHistory]);
 
+  // Update form when user data changes
+  useEffect(() => {
+    if (user) {
+      setEditForm({
+        displayName: user.displayName || '',
+        profilePicture: user.profilePicture || ''
+      });
+    }
+  }, [user]);
+
   const handleSave = async () => {
     if (user) {
       setSaveError(null);

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Test</title>
+</head>
+<body>
+    <h1>Chrysalis API Test</h1>
+    <div id="results"></div>
+    <button onclick="testLogin()">Test Login</button>
+    <button onclick="testProfileUpdate()">Test Profile Update</button>
+    
+    <script>
+        const baseUrl = 'https://chrysalis-mindfulness-app.onrender.com/api';
+        const results = document.getElementById('results');
+        
+        async function testLogin() {
+            try {
+                results.innerHTML = 'Testing login...';
+                const response = await fetch(`${baseUrl}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: 'testprofile2@example.com',
+                        password: 'TestPassword123!'
+                    })
+                });
+                
+                console.log('Response status:', response.status);
+                console.log('Response headers:', Object.fromEntries(response.headers));
+                
+                const text = await response.text();
+                console.log('Raw response:', text);
+                
+                const data = JSON.parse(text);
+                results.innerHTML = `<h3>Login Success:</h3><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                
+                // Store token for profile test
+                window.testToken = data.token;
+            } catch (error) {
+                console.error('Login error:', error);
+                results.innerHTML = `<h3>Login Error:</h3><pre>${error.message}</pre>`;
+            }
+        }
+        
+        async function testProfileUpdate() {
+            if (!window.testToken) {
+                results.innerHTML = 'Please login first';
+                return;
+            }
+            
+            try {
+                results.innerHTML = 'Testing profile update...';
+                const response = await fetch(`${baseUrl}/users/profile`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${window.testToken}`
+                    },
+                    body: JSON.stringify({
+                        displayName: 'Test Update From Browser',
+                        profilePicture: 'https://example.com/test.jpg'
+                    })
+                });
+                
+                console.log('Response status:', response.status);
+                console.log('Response headers:', Object.fromEntries(response.headers));
+                
+                const text = await response.text();
+                console.log('Raw response:', text);
+                
+                const data = JSON.parse(text);
+                results.innerHTML = `<h3>Profile Update Success:</h3><pre>${JSON.stringify(data, null, 2)}</pre>`;
+            } catch (error) {
+                console.error('Profile update error:', error);
+                results.innerHTML = `<h3>Profile Update Error:</h3><pre>${error.message}</pre>`;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -3,6 +3,31 @@
 
 import type { Friend, FriendRequest, Group } from '../stores/socialStore';
 
+// Backend user interface (snake_case fields)
+interface BackendUser {
+  id: string;
+  email: string;
+  display_name: string;
+  profile_picture?: string;
+  joined_at: string;
+  total_sessions: number;
+  total_minutes: number;
+  current_streak: number;
+  longest_streak: number;
+  level: number;
+  experience: number;
+  last_session_date?: string;
+  preferences: {
+    defaultDuration?: number;
+    defaultFrequency?: string;
+    notifications?: boolean;
+    theme?: string;
+  } | Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+// Frontend user interface (camelCase fields)
 interface User {
   id: string;
   email: string;
@@ -70,6 +95,30 @@ class ChrysalisAPIService {
   constructor() {
     // Load token from localStorage on initialization
     this.token = localStorage.getItem('chrysalis_auth_token');
+  }
+
+  // Helper function to map backend user to frontend user interface
+  private mapBackendUser(backendUser: BackendUser): User {
+    return {
+      id: backendUser.id,
+      email: backendUser.email,
+      displayName: backendUser.display_name,
+      profilePicture: backendUser.profile_picture,
+      joinedAt: backendUser.joined_at,
+      totalSessions: backendUser.total_sessions || 0,
+      totalMinutes: backendUser.total_minutes || 0,
+      currentStreak: backendUser.current_streak || 0,
+      longestStreak: backendUser.longest_streak || 0,
+      level: backendUser.level || 1,
+      experience: backendUser.experience || 0,
+      lastSessionDate: backendUser.last_session_date,
+      preferences: {
+        defaultDuration: (backendUser.preferences as Record<string, unknown>)?.defaultDuration as number || 10,
+        defaultFrequency: (backendUser.preferences as Record<string, unknown>)?.defaultFrequency as string || 'daily',
+        notifications: (backendUser.preferences as Record<string, unknown>)?.notifications as boolean ?? true,
+        theme: (backendUser.preferences as Record<string, unknown>)?.theme as string || 'light'
+      }
+    };
   }
 
   private setAuthToken(token: string | null): void {
@@ -150,7 +199,7 @@ class ChrysalisAPIService {
     user: User;
     token: string;
   }> {
-    const response = await this.request<{ user: User; token: string }>('/auth/register', {
+    const response = await this.request<{ user: BackendUser; token: string }>('/auth/register', {
       method: 'POST',
       body: JSON.stringify({ 
         email, 
@@ -162,14 +211,17 @@ class ChrysalisAPIService {
     // Store the auth token
     this.setAuthToken(response.token);
 
-    return response;
+    return {
+      user: this.mapBackendUser(response.user),
+      token: response.token
+    };
   }
 
   async login(email: string, password: string): Promise<{
     user: User;
     token: string;
   }> {
-    const response = await this.request<{ user: User; token: string }>('/auth/login', {
+    const response = await this.request<{ user: BackendUser; token: string }>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
@@ -177,7 +229,10 @@ class ChrysalisAPIService {
     // Store the auth token
     this.setAuthToken(response.token);
 
-    return response;
+    return {
+      user: this.mapBackendUser(response.user),
+      token: response.token
+    };
   }
 
   async logout(): Promise<void> {
@@ -188,14 +243,22 @@ class ChrysalisAPIService {
   // USER PROFILE METHODS
 
   async getProfile(): Promise<{ user: User }> {
-    return this.request<{ user: User }>('/users/profile');
+    const response = await this.request<{ user: BackendUser }>('/users/profile');
+    return { user: this.mapBackendUser(response.user) };
   }
 
   async updateProfile(updates: Partial<User>): Promise<{ user: User }> {
-    return this.request<{ user: User }>('/users/profile', {
+    // Map frontend field names to backend field names
+    const backendUpdates: Record<string, unknown> = {};
+    if (updates.displayName !== undefined) backendUpdates.displayName = updates.displayName;
+    if (updates.profilePicture !== undefined) backendUpdates.profilePicture = updates.profilePicture;
+    
+    const response = await this.request<{ user: BackendUser }>('/users/profile', {
       method: 'PUT',
-      body: JSON.stringify(updates),
+      body: JSON.stringify(backendUpdates),
     });
+
+    return { user: this.mapBackendUser(response.user) };
   }
 
   async uploadProfilePicture(file: File): Promise<{ user: User }> {
@@ -220,7 +283,9 @@ class ChrysalisAPIService {
       throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
     }
 
-    return response.json();
+    const data = await response.json() as { user: BackendUser };
+    
+    return { user: this.mapBackendUser(data.user) };
   }
 
   // SESSION METHODS

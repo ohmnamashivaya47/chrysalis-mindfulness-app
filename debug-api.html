@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Debug Test</title>
+</head>
+<body>
+    <h1>API Debug Test</h1>
+    <button onclick="testAPI()">Test Production API</button>
+    <div id="output"></div>
+    
+    <script>
+        async function testAPI() {
+            const output = document.getElementById('output');
+            output.innerHTML = 'Testing...';
+            
+            try {
+                // Test the exact same configuration as the production app
+                const isDev = window.location.hostname === 'localhost';
+                const baseUrl = isDev 
+                    ? 'http://localhost:3001/api'
+                    : 'https://chrysalis-mindfulness-app.onrender.com/api';
+                
+                output.innerHTML += `<br>Using baseUrl: ${baseUrl}`;
+                
+                const response = await fetch(`${baseUrl}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: 'test@example.com',
+                        password: 'wrong'
+                    })
+                });
+                
+                output.innerHTML += `<br>Response status: ${response.status}`;
+                output.innerHTML += `<br>Response ok: ${response.ok}`;
+                output.innerHTML += `<br>Response type: ${response.type}`;
+                
+                const contentType = response.headers.get('content-type');
+                output.innerHTML += `<br>Content-Type: ${contentType}`;
+                
+                const text = await response.text();
+                output.innerHTML += `<br>Raw response: ${text.substring(0, 200)}`;
+                
+                if (contentType && contentType.includes('application/json')) {
+                    const data = JSON.parse(text);
+                    output.innerHTML += `<br>Parsed JSON: ${JSON.stringify(data)}`;
+                } else {
+                    output.innerHTML += `<br>❌ NOT JSON! Received: ${contentType}`;
+                }
+                
+            } catch (error) {
+                output.innerHTML += `<br>❌ Error: ${error.message}`;
+                console.error('Full error:', error);
+            }
+        }
+    </script>
+</body>
+</html>
