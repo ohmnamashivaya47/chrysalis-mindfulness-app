@@ -1663,7 +1663,7 @@ const userHelpersAuth = {
           userData.updated_at
         ]
       );
-      return result.rows[0].id;
+      return result.rows[0]; // Return full user object, not just ID
     } finally {
       client.release();
     }
