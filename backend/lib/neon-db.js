@@ -1658,7 +1658,7 @@ const userHelpersAuth = {
         [
           userData.email,
           userData.password_hash,
-          userData.display_name || userData.username || userData.full_name,
+          userData.display_name || userData.username || 'User',
           userData.created_at,
           userData.updated_at
         ]

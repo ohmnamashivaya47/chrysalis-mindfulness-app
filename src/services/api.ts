@@ -106,11 +106,32 @@ class ChrysalisAPIService {
       const response = await fetch(url, config);
       
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || errorData.message || `HTTP ${response.status}`);
+        let errorMessage = `HTTP ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch {
+          // If we can't parse JSON, try to get text response for debugging
+          try {
+            const textResponse = await response.text();
+            console.error(`API Error - Non-JSON response from ${endpoint}:`, textResponse.substring(0, 200));
+            errorMessage = `Server error (${response.status}). Check console for details.`;
+          } catch {
+            console.error(`API Error - Could not read response from ${endpoint}`);
+          }
+        }
+        throw new Error(errorMessage);
       }
 
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch {
+        console.error(`API Error - Invalid JSON response from ${endpoint}`);
+        const textResponse = await response.text();
+        console.error('Response text:', textResponse.substring(0, 200));
+        throw new Error('Server returned invalid response format');
+      }
       
       if (!data.success) {
         throw new Error(data.error || data.message || 'API request failed');
