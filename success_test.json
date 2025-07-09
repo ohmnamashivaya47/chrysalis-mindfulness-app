@@ -1,0 +1,1 @@
+{"success":false,"error":"Registration failed","message":"null value in column \"password_hash\" of relation \"users\" violates not-null constraint"}

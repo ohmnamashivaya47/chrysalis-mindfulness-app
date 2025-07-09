@@ -21,6 +21,7 @@
     "@netlify/blobs": "^10.0.2",
     "@sentry/react": "^9.35.0",
     "@sentry/tracing": "^7.120.3",
+    "@types/react-router-dom": "^5.3.3",
     "bcryptjs": "^2.4.3",
     "cloudinary": "^2.7.0",
     "clsx": "^2.1.1",
@@ -34,7 +35,7 @@
     "qrcode.react": "^4.2.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "react-router-dom": "^6.28.0",
+    "react-router-dom": "^6.30.1",
     "tailwind-merge": "^2.5.4",
     "zustand": "^5.0.1"
   },

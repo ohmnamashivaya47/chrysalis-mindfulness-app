@@ -43,38 +43,62 @@ export const MeditationSession = ({ onEnd }: MeditationSessionProps) => {
   }, [])
 
   // Start binaural beats
-  // const startBinauralBeats = (frequency: FrequencyType) => {
-  //   if (!audioContextRef.current) return
+  const startBinauralBeats = (frequency: FrequencyType) => {
+    if (!audioContextRef.current) return
 
-  //   const audioContext = audioContextRef.current
-  //   const freq = frequencies[frequency].hz
+    const audioContext = audioContextRef.current
+    const freq = frequencies[frequency].hz
 
-  //   // Create oscillators for binaural beats
-  //   const oscillator1 = audioContext.createOscillator()
-  //   const oscillator2 = audioContext.createOscillator()
-  //   const gainNode = audioContext.createGain()
+    // Create oscillators for binaural beats
+    const oscillator1 = audioContext.createOscillator()
+    const oscillator2 = audioContext.createOscillator()
+    const gainNode = audioContext.createGain()
 
-  //   oscillator1.frequency.setValueAtTime(200, audioContext.currentTime) // Base frequency
-  //   oscillator2.frequency.setValueAtTime(200 + freq, audioContext.currentTime) // Base + binaural frequency
+    oscillator1.frequency.setValueAtTime(200, audioContext.currentTime) // Base frequency
+    oscillator2.frequency.setValueAtTime(200 + freq, audioContext.currentTime) // Base + binaural frequency
 
-  //   oscillator1.type = 'sine'
-  //   oscillator2.type = 'sine'
-  //   gainNode.gain.value = 0.1
+    oscillator1.type = 'sine'
+    oscillator2.type = 'sine'
+    gainNode.gain.value = 0.1
 
-  //   oscillator1.connect(gainNode).connect(audioContext.destination)
-  //   oscillator2.connect(gainNode)
+    // Connect oscillators to stereo channels for binaural effect
+    const splitter = audioContext.createChannelSplitter(2)
+    const merger = audioContext.createChannelMerger(2)
 
-  //   oscillator1.start()
-  //   oscillator2.start()
-  //   audioContextRef.current['osc1'] = oscillator1
-  //   audioContextRef.current['osc2'] = oscillator2
-  // }
+    oscillator1.connect(splitter)
+    oscillator2.connect(splitter)
+    
+    splitter.connect(merger, 0, 0) // Left channel
+    splitter.connect(merger, 1, 1) // Right channel
+    
+    merger.connect(gainNode)
+    gainNode.connect(audioContext.destination)
+
+    oscillator1.start()
+    oscillator2.start()
+    
+    // Store references for cleanup
+    oscillatorRef.current = oscillator1
+    gainNodeRef.current = gainNode
+  }
 
   // Stop binaural beats
   const stopBinauralBeats = () => {
-    if (oscillatorRef.current && gainNodeRef.current) {
-      oscillatorRef.current.stop()
-      gainNodeRef.current.disconnect()
+    if (oscillatorRef.current) {
+      try {
+        oscillatorRef.current.stop()
+        oscillatorRef.current = null
+      } catch {
+        // Oscillator may already be stopped
+      }
+    }
+    if (gainNodeRef.current) {
+      try {
+        gainNodeRef.current.disconnect()
+        gainNodeRef.current = null
+      } catch {
+        // Node may already be disconnected
+      }
     }
   }
 
@@ -97,6 +121,7 @@ export const MeditationSession = ({ onEnd }: MeditationSessionProps) => {
             if (!sessionCompleted) {
               setSessionCompleted(true)
               handleSessionComplete()
+              stopBinauralBeats() // Stop audio when session completes
             }
             setPhase('completion')
             return 0
@@ -236,6 +261,10 @@ export const MeditationSession = ({ onEnd }: MeditationSessionProps) => {
                     setTimeLeft(selectedDuration * 60)
                     setPhase('meditation')
                     meditation.startSession(selectedDuration, selectedFrequency)
+                    // Start binaural beats audio
+                    if (!noAudio) {
+                      startBinauralBeats(selectedFrequency)
+                    }
                   }}
                   className="w-full bg-gradient-to-r from-primary-600 to-primary-700 text-white font-bold py-4 px-8 rounded-xl shadow-lg"
                 >

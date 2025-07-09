@@ -60,6 +60,10 @@ interface SocialState {
   fetchFriends: () => Promise<void>;
   fetchFriendRequests: () => Promise<void>;
   addFriend: (friendUserId: string) => Promise<void>;
+  addFriendInstant: (friendCode: string) => Promise<{ 
+    message: string; 
+    friend?: { id: string; name: string; email: string }; 
+  }>;
   acceptFriendRequest: (requestId: string) => Promise<void>;
   
   fetchGroups: () => Promise<void>;
@@ -126,6 +130,19 @@ export const useSocialStore = create<SocialState>((set, get) => ({
       get().fetchFriendRequests();
     } catch (error) {
       console.error('Failed to add friend:', error);
+      throw error;
+    }
+  },
+
+  // Add friend instantly via QR code
+  addFriendInstant: async (friendCode: string) => {
+    try {
+      const response = await apiService.addFriendInstant(friendCode);
+      // Refresh friends list since friendship is instant
+      get().fetchFriends();
+      return response;
+    } catch (error) {
+      console.error('Failed to add friend instantly:', error);
       throw error;
     }
   },

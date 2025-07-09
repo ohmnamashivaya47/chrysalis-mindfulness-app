@@ -516,6 +516,20 @@ class ChrysalisAPIService {
     });
   }
 
+  // Add friend instantly via QR code/friend code (no request needed)
+  async addFriendInstant(friendCode: string): Promise<{ 
+    message: string; 
+    friend?: { id: string; name: string; email: string }; 
+  }> {
+    return this.request<{ 
+      message: string; 
+      friend?: { id: string; name: string; email: string }; 
+    }>('/friends/add-instant', {
+      method: 'POST',
+      body: JSON.stringify({ friendCode }),
+    });
+  }
+
   async acceptFriendRequest(requestId: string): Promise<{ message: string }> {
     return this.request<{ message: string }>('/friends/accept', {
       method: 'POST',

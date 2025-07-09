@@ -1,7 +1,8 @@
+import { BrowserRouter } from 'react-router-dom';
 import { useAuthStore } from './stores/authStore';
 import { LoginScreen } from './components/auth/LoginScreen';
 import { OnboardingFlow } from './components/auth/OnboardingFlow';
-import { MeditationApp } from './components/meditation/MeditationApp';
+import { AppLayout } from './components/AppLayout';
 
 function App() {
   const { user, showOnboarding, completeOnboarding } = useAuthStore();
@@ -14,7 +15,9 @@ function App() {
         ) : showOnboarding ? (
           <OnboardingFlow onComplete={completeOnboarding} />
         ) : (
-          <MeditationApp />
+          <BrowserRouter>
+            <AppLayout />
+          </BrowserRouter>
         )}
       </div>
     </div>
