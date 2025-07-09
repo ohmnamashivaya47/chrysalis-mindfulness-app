@@ -34,6 +34,7 @@ app.use(helmet({
 const corsOrigins = process.env.CORS_ORIGINS 
   ? process.env.CORS_ORIGINS.split(',').map(origin => origin.trim())
   : [
+    'https://chrysalis-presence-app.netlify.app', // Updated to current URL
     'https://chrysalis-meditation.netlify.app',
     'https://main--chrysalis-meditation.netlify.app',
     'http://localhost:5173',
@@ -43,7 +44,28 @@ const corsOrigins = process.env.CORS_ORIGINS
 console.log('🌐 CORS Origins:', corsOrigins);
 
 app.use(cors({
-  origin: corsOrigins,
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps or Postman)
+    if (!origin) return callback(null, true);
+    
+    // Check if origin is in allowed list
+    if (corsOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    
+    // Allow any localhost origins for development
+    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      return callback(null, true);
+    }
+    
+    // Allow Netlify preview deployments
+    if (origin.includes('netlify.app')) {
+      return callback(null, true);
+    }
+    
+    console.log('🚫 CORS blocked origin:', origin);
+    return callback(new Error('Not allowed by CORS'), false);
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token']

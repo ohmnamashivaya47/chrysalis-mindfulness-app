@@ -99,9 +99,8 @@ router.put('/profile', authenticateToken, async (req, res) => {
 
     // Map frontend fields to database columns
     const updateData = {
-      display_name: displayName || fullName, // Handle both field names
+      display_name: displayName, // Only use displayName, no full_name field
       profile_picture: profilePicture,
-      full_name: fullName || displayName, // Fallback
       username,
       bio,
       meditation_goals: meditationGoals,
