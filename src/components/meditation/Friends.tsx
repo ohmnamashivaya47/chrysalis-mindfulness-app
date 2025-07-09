@@ -168,7 +168,7 @@ const Friends: React.FC = () => {
       }));
       setSearchResults(mappedResults);
     } catch {
-      setError('Search temporarily unavailable. Try again in a moment.\n\u2014 Presence is always available, even when technology is not.');
+      setError('Search temporarily unavailable. Please try again.');
     } finally {
       setLoading(false);
     }

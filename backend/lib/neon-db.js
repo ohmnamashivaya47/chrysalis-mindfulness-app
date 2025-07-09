@@ -1742,14 +1742,26 @@ const userHelpersAuth = {
   async updateSessionStats(userId, stats) {
     const client = await db.getClient();
     try {
+      // Calculate XP gain (e.g., 10 XP per minute)
+      const xpGain = stats.total_minutes * 10;
+      
       await client.query(
         `UPDATE users SET 
            total_sessions = COALESCE(total_sessions, 0) + $2,
            total_minutes = COALESCE(total_minutes, 0) + $3,
-           last_session_date = $4,
+           experience = COALESCE(experience, 0) + $4,
+           last_session_date = $5,
            updated_at = CURRENT_TIMESTAMP
          WHERE id = $1`,
-        [userId, stats.total_sessions, stats.total_minutes, stats.last_session_date]
+        [userId, stats.total_sessions, stats.total_minutes, xpGain, stats.last_session_date]
+      );
+      
+      // Update level based on experience
+      await client.query(
+        `UPDATE users SET 
+           level = GREATEST(1, FLOOR(experience / 1000) + 1)
+         WHERE id = $1`,
+        [userId]
       );
     } finally {
       client.release();
@@ -1791,6 +1803,19 @@ const sessionHelpersAuth = {
         ]
       );
       return result.rows[0].id;
+    } finally {
+      client.release();
+    }
+  },
+
+  async findById(sessionId) {
+    const client = await db.getClient();
+    try {
+      const result = await client.query(
+        'SELECT * FROM sessions WHERE id = $1',
+        [sessionId]
+      );
+      return result.rows[0];
     } finally {
       client.release();
     }

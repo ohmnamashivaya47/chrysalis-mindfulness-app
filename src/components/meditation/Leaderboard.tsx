@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Trophy, AlertCircle, Medal, Crown, Award } from 'lucide-react';
 import { apiService } from '../../services/api';
 
-type LeaderboardType = 'global' | 'local' | 'friends';
+type LeaderboardType = 'global' | 'friends';
 
 interface LeaderboardEntry {
   id: string;
@@ -40,9 +40,6 @@ export const Leaderboard = ({ refreshKey }: LeaderboardProps) => {
         case 'global':
           response = await apiService.getGlobalLeaderboard();
           break;
-        case 'local':
-          response = await apiService.getLocalLeaderboard();
-          break;
         case 'friends':
           response = await apiService.getFriendsLeaderboard();
           break;
@@ -52,7 +49,7 @@ export const Leaderboard = ({ refreshKey }: LeaderboardProps) => {
       
       if (!response) {
         setLeaderboardData([]);
-        setError('Leaderboard service is temporarily unavailable. Your progress is still being tracked.');
+        setError('Leaderboard service is temporarily unavailable.');
         return;
       }
       
@@ -68,7 +65,11 @@ export const Leaderboard = ({ refreshKey }: LeaderboardProps) => {
       console.error('Leaderboard fetch error:', err);
       setLeaderboardData([]);
       if (err instanceof Error) {
-        setError(`Unable to load ${type} leaderboard: ${err.message}`);
+        if (err.message.includes('429')) {
+          setError('Too many requests. Please wait a moment before refreshing.');
+        } else {
+          setError(`Unable to load ${type} leaderboard. Please try again.`);
+        }
       } else {
         setError(`Failed to load ${type} leaderboard. Please check your connection and try again.`);
       }
@@ -160,7 +161,7 @@ export const Leaderboard = ({ refreshKey }: LeaderboardProps) => {
         {/* Board Selection */}
         <div className="flex justify-center mb-8" role="tablist" aria-label="Leaderboard type">
           <div className="bg-white rounded-xl p-1 shadow-md flex items-center gap-2">
-            {(['global', 'local', 'friends'] as const).map((board) => (
+            {(['global', 'friends'] as const).map((board) => (
               <button
                 key={board}
                 onClick={() => setActiveBoard(board)}
@@ -205,7 +206,7 @@ export const Leaderboard = ({ refreshKey }: LeaderboardProps) => {
             <div className="text-center py-8" aria-live="assertive" tabIndex={-1}>
               <AlertCircle className="text-red-500 mb-2 mx-auto" size={32} aria-hidden="true" />
               <p className="text-red-600">{error}</p>
-              <p className="text-primary-500 mt-2 italic">Remember, your worth is not defined by numbers.</p>
+              <p className="text-primary-500 mt-2">Progress is personal and unique to everyone.</p>
               <button
                 onClick={() => fetchLeaderboard(activeBoard)}
                 className="mt-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"

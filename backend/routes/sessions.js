@@ -75,16 +75,36 @@ router.post('/complete', authenticateToken, async (req, res) => {
 
     const sessionId = await sessionHelpers.create(sessionData);
 
-    // Update user stats
+    // Update user stats and get updated user data
     await userHelpers.updateSessionStats(req.userId, {
       total_sessions: 1,
       total_minutes: parseInt(duration),
       last_session_date: new Date().toISOString()
     });
 
+    // Get updated user data
+    const updatedUser = await userHelpers.findById(req.userId);
+    
+    // Get the session data
+    const session = await sessionHelpers.findById(sessionId);
+
     res.json({
       success: true,
-      sessionId,
+      session: {
+        id: session.id,
+        userId: session.user_id,
+        duration: session.duration,
+        frequency: session.frequency,
+        completedAt: session.completed_at,
+        xpGained: parseInt(duration), // XP = duration for now
+        sessionType: session.session_type,
+        actualDuration: session.actual_duration,
+        paused: session.paused || false,
+        pauseCount: session.pause_count || 0
+      },
+      user: updatedUser,
+      xpGained: parseInt(duration),
+      levelUp: false, // TODO: implement level calculation
       message: 'Session completed successfully'
     });
 

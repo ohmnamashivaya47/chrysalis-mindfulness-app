@@ -71,11 +71,15 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token']
 }));
 
-// Rate limiting
+// Rate limiting - very generous for production use
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.'
+  max: 2000, // limit each IP to 2000 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.',
+  skip: (req) => {
+    // Skip rate limiting for health checks and specific development IPs
+    return req.path === '/health' || req.path === '/api/health';
+  }
 });
 app.use('/api/', limiter);
 

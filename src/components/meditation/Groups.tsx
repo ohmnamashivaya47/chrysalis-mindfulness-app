@@ -181,11 +181,11 @@ export const Groups = () => {
       (async () => {
         try {
           await joinGroup(autoJoinCode);
-          setFeedback('Joined group successfully!\n\u2014 You are now part of a mindful community.');
+          setFeedback('Joined group successfully!');
           setAutoJoinCode(null);
           loadGroups();
         } catch {
-          setFeedback('Error joining group.\n\u2014 The path to connection is sometimes winding.');
+          setFeedback('Error joining group');
         }
       })();
     }

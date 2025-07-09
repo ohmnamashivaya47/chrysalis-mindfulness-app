@@ -153,6 +153,7 @@ class ChrysalisAPIService {
     
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
       ...(options.headers as Record<string, string> || {}),
     };
 
@@ -167,9 +168,11 @@ class ChrysalisAPIService {
     };
 
     try {
+      console.log(`[API Request] ${options.method || 'GET'} ${url}`);
+      
       // Add longer timeout for mobile networks
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 second timeout
       
       const response = await fetch(url, {
         ...config,
@@ -178,6 +181,20 @@ class ChrysalisAPIService {
       
       clearTimeout(timeoutId);
       
+      console.log(`[API Response] ${response.status} ${response.statusText} for ${endpoint}`);
+      console.log(`[API Content-Type] ${response.headers.get('content-type')}`);
+      
+      // Clone response to read text for debugging
+      const responseClone = response.clone();
+      let responseText = '';
+      
+      try {
+        responseText = await responseClone.text();
+        console.log(`[API Raw Response] ${responseText.substring(0, 300)}${responseText.length > 300 ? '...' : ''}`);
+      } catch (e) {
+        console.warn('[API] Could not read response text for debugging:', e);
+      }
+
       if (!response.ok) {
         let errorMessage = `HTTP ${response.status}`;
         try {
@@ -187,64 +204,85 @@ class ChrysalisAPIService {
             errorMessage = errorData.error || errorData.message || errorMessage;
           } else {
             // Server returned HTML or other non-JSON response
-            const textResponse = await response.text();
-            console.error(`API Error - Non-JSON response from ${endpoint}:`, textResponse.substring(0, 200));
+            console.error(`[API Error] Non-JSON response from ${endpoint}:`, responseText.substring(0, 200));
             
-            if (textResponse.includes('<!DOCTYPE html>')) {
+            if (responseText.includes('<!DOCTYPE html>')) {
               errorMessage = 'Server error - received HTML instead of JSON. Please check your internet connection and try again.';
             } else {
               errorMessage = `Server error (${response.status}). Please try again.`;
             }
           }
         } catch (parseError) {
-          console.error(`API Error - Could not parse error response from ${endpoint}:`, parseError);
+          console.error(`[API Error] Could not parse error response from ${endpoint}:`, parseError);
           errorMessage = `Network error (${response.status}). Please check your connection and try again.`;
         }
         throw new Error(errorMessage);
       }
 
+      // Parse successful response
       let data;
       try {
         const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          const textResponse = await response.text();
-          console.error(`API Error - Invalid content-type from ${endpoint}:`, contentType);
-          console.error('Response text:', textResponse.substring(0, 200));
+        
+        // More lenient content-type checking for mobile
+        if (!contentType) {
+          console.warn(`[API Warning] No content-type header from ${endpoint}, attempting JSON parse anyway`);
+        } else if (!contentType.includes('application/json') && !contentType.includes('text/json')) {
+          console.error(`[API Error] Invalid content-type from ${endpoint}:`, contentType);
+          console.error('[API Response Text]:', responseText.substring(0, 200));
           
-          if (textResponse.includes('<!DOCTYPE html>')) {
+          if (responseText.includes('<!DOCTYPE html>')) {
             throw new Error('Server returned HTML page instead of JSON. Please check your internet connection.');
           } else {
             throw new Error('Server returned invalid response format. Please try again.');
           }
         }
         
-        data = await response.json();
-      } catch (jsonError) {
-        console.error(`API Error - Invalid JSON response from ${endpoint}:`, jsonError);
-        const textResponse = await response.text();
-        console.error('Response text:', textResponse.substring(0, 200));
-        throw new Error('Server returned invalid JSON response. Please check your connection and try again.');
+        // Try to parse JSON
+        if (responseText.trim()) {
+          try {
+            data = JSON.parse(responseText);
+          } catch (jsonError) {
+            console.error(`[API Error] JSON parse failed for ${endpoint}:`, jsonError);
+            console.error('[API Raw Text]:', responseText);
+            throw new Error('Server returned invalid JSON. Please try again.');
+          }
+        } else {
+          console.error(`[API Error] Empty response from ${endpoint}`);
+          throw new Error('Server returned empty response. Please try again.');
+        }
+        
+      } catch (parseError) {
+        console.error(`[API Error] Response parsing failed for ${endpoint}:`, parseError);
+        throw parseError;
+      }
+      
+      if (!data || typeof data !== 'object') {
+        console.error(`[API Error] Invalid response data from ${endpoint}:`, data);
+        throw new Error('Server returned invalid data format. Please try again.');
       }
       
       if (!data.success) {
         throw new Error(data.error || data.message || 'API request failed');
       }
       
+      console.log(`[API Success] ${endpoint} completed successfully`);
       return data;
+      
     } catch (error) {
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
-          console.error(`API Timeout (${endpoint}):`, error);
+          console.error(`[API Timeout] ${endpoint}:`, error);
           throw new Error('Request timed out. Please check your internet connection and try again.');
         } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-          console.error(`API Network Error (${endpoint}):`, error);
+          console.error(`[API Network Error] ${endpoint}:`, error);
           throw new Error('Network error. Please check your internet connection and try again.');
         } else {
-          console.error(`API Error (${endpoint}):`, error);
+          console.error(`[API Error] ${endpoint}:`, error);
           throw error;
         }
       } else {
-        console.error(`API Unknown Error (${endpoint}):`, error);
+        console.error(`[API Unknown Error] ${endpoint}:`, error);
         throw new Error('An unexpected error occurred. Please try again.');
       }
     }
@@ -348,16 +386,41 @@ class ChrysalisAPIService {
   // SESSION METHODS
 
   async completeSession(sessionData: SessionData): Promise<{
-    sessionId: string;
+    session: Session;
+    user: User;
+    xpGained: number;
+    levelUp: boolean;
     message: string;
   }> {
-    return this.request<{
-      sessionId: string;
+    const response = await this.request<{
+      session: {
+        id: string;
+        userId: string;
+        duration: number;
+        frequency: string;
+        completedAt: string;
+        xpGained: number;
+        sessionType: string;
+        actualDuration?: number;
+        paused: boolean;
+        pauseCount: number;
+      };
+      user: BackendUser;
+      xpGained: number;
+      levelUp: boolean;
       message: string;
     }>('/sessions/complete', {
       method: 'POST',
       body: JSON.stringify(sessionData),
     });
+
+    return {
+      session: response.session,
+      user: this.mapBackendUser(response.user),
+      xpGained: response.xpGained,
+      levelUp: response.levelUp,
+      message: response.message
+    };
   }
 
   async getSessionHistory(): Promise<{ 
@@ -406,24 +469,6 @@ class ChrysalisAPIService {
       period: string;
       type: string;
     }>(`/leaderboards/global?limit=${limit}`);
-    
-    return {
-      leaderboard: response.leaderboard.map(entry => this.mapLeaderboardEntry(entry)),
-      period: response.period,
-      type: response.type
-    };
-  }
-
-  async getLocalLeaderboard(limit = 50): Promise<{
-    leaderboard: LeaderboardEntry[];
-    period: string;
-    type: string;
-  }> {
-    const response = await this.request<{
-      leaderboard: Record<string, unknown>[];
-      period: string;
-      type: string;
-    }>(`/leaderboards/local?limit=${limit}`);
     
     return {
       leaderboard: response.leaderboard.map(entry => this.mapLeaderboardEntry(entry)),
@@ -499,12 +544,44 @@ class ChrysalisAPIService {
   }
 
   async searchUsers(query: string): Promise<{ users: User[] }> {
-    const response = await this.request<{ users: BackendUser[] }>(`/friends/search?query=${encodeURIComponent(query)}`);
-    
-    // Map backend users to frontend users
-    const mappedUsers = response.users.map(user => this.mapBackendUser(user));
-    
-    return { users: mappedUsers };
+    try {
+      const response = await this.request<{ users: Array<{
+        id: string;
+        display_name: string;
+        profile_picture?: string;
+        level: number;
+        total_sessions: number;
+        is_friend: boolean;
+        has_pending_request: boolean;
+      }> }>(`/friends/search?query=${encodeURIComponent(query)}`);
+      
+      // Map search results to User format
+      const mappedUsers = response.users.map(user => ({
+        id: user.id,
+        email: '', // Not returned in search results for privacy
+        displayName: user.display_name,
+        profilePicture: user.profile_picture,
+        joinedAt: new Date().toISOString(), // Not returned in search
+        totalSessions: user.total_sessions || 0,
+        totalMinutes: 0, // Not returned in search
+        currentStreak: 0, // Not returned in search
+        longestStreak: 0, // Not returned in search
+        level: user.level || 1,
+        experience: 0, // Not returned in search
+        lastSessionDate: undefined,
+        preferences: {
+          defaultDuration: 10,
+          defaultFrequency: 'daily',
+          notifications: true,
+          theme: 'light'
+        }
+      }));
+      
+      return { users: mappedUsers };
+    } catch (error) {
+      console.error('[API Error] Search users failed:', error);
+      throw error;
+    }
   }
 
   // SOCIAL METHODS - Groups
