@@ -255,4 +255,68 @@ router.get('/search', authenticateToken, async (req, res) => {
   }
 });
 
+// POST /api/friends/add-instant
+// Add friend instantly via QR code/friend code (no request needed)
+router.post('/add-instant', authenticateToken, async (req, res) => {
+  try {
+    const { friendCode } = req.body;
+    
+    if (!friendCode || friendCode.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        error: 'Friend code is required'
+      });
+    }
+
+    const targetUserId = friendCode.trim();
+
+    // Cannot add yourself as friend
+    if (targetUserId === req.userId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Cannot add yourself as friend'
+      });
+    }
+
+    // Check if target user exists
+    const targetUser = await userHelpers.findById(targetUserId);
+    if (!targetUser) {
+      return res.status(404).json({
+        success: false,
+        error: 'User with this friend code not found'
+      });
+    }
+
+    // Check if friendship already exists
+    const existingFriendship = await friendHelpers.checkFriendship(req.userId, targetUserId);
+    if (existingFriendship) {
+      return res.status(409).json({
+        success: false,
+        error: 'You are already friends with this user'
+      });
+    }
+
+    // Create instant friendship (bidirectional)
+    await friendHelpers.createInstantFriendship(req.userId, targetUserId);
+
+    res.json({
+      success: true,
+      message: 'Friend added successfully!',
+      friend: {
+        id: targetUser.id,
+        name: targetUser.display_name,
+        email: targetUser.email
+      }
+    });
+
+  } catch (error) {
+    console.error('Add instant friend error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to add friend',
+      message: error.message
+    });
+  }
+});
+
 module.exports = router;

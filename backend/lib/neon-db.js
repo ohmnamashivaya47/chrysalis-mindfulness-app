@@ -1274,7 +1274,30 @@ const socialHelpers = {
       } finally {
         client.release();
       }
-    }
+    },
+
+    // Create instant friendship (no request needed) for QR code scanning
+    async createInstantFriendship(userId1, userId2) {
+      const client = await db.getClient();
+      try {
+        await client.query('BEGIN');
+
+        // Create bidirectional friendship
+        await client.query(
+          `INSERT INTO friendships (user_id_1, user_id_2, status, created_at, updated_at) 
+           VALUES ($1, $2, 'accepted', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+          [userId1, userId2]
+        );
+
+        await client.query('COMMIT');
+        return true;
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
+    },
 
     // ...existing code...
   }
@@ -1640,6 +1663,29 @@ const friendHelpers = {
         [userId1, userId2]
       );
       return result.rows[0];
+    } finally {
+      client.release();
+    }
+  },
+
+  // Create instant friendship (no request needed) for QR code scanning
+  async createInstantFriendship(userId1, userId2) {
+    const client = await db.getClient();
+    try {
+      await client.query('BEGIN');
+
+      // Create bidirectional friendship
+      await client.query(
+        `INSERT INTO friendships (user_id_1, user_id_2, status, created_at, updated_at) 
+         VALUES ($1, $2, 'accepted', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+        [userId1, userId2]
+      );
+
+      await client.query('COMMIT');
+      return true;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
     } finally {
       client.release();
     }
