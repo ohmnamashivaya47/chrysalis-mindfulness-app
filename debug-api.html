@@ -1,36 +1,104 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>API Debug Test - Complete</title>
+    <title>Mobile Sign-In Debug</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { font-family: monospace; margin: 20px; }
-        .test-section { border: 1px solid #ccc; margin: 10px 0; padding: 10px; }
-        .success { color: green; }
-        .error { color: red; }
-        .warning { color: orange; }
-        button { margin: 5px; padding: 10px; }
-        #output { max-height: 500px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; }
+        body { 
+            font-family: monospace; 
+            margin: 10px; 
+            font-size: 12px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 100%;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-section { 
+            border: 1px solid #ccc; 
+            margin: 10px 0; 
+            padding: 10px; 
+            border-radius: 4px;
+        }
+        .success { color: green; font-weight: bold; }
+        .error { color: red; font-weight: bold; }
+        .warning { color: orange; font-weight: bold; }
+        button { 
+            margin: 5px 0; 
+            padding: 12px 15px; 
+            width: 100%;
+            font-size: 14px;
+            border: none;
+            border-radius: 4px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover { background: #0056b3; }
+        #output { 
+            max-height: 400px; 
+            overflow-y: auto; 
+            border: 1px solid #ccc; 
+            padding: 10px; 
+            background: #f9f9f9;
+            font-size: 11px;
+            line-height: 1.4;
+        }
+        .log-entry {
+            margin: 2px 0;
+            padding: 2px 0;
+            border-bottom: 1px dotted #ddd;
+        }
+        .mobile-info {
+            background: #e7f3ff;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-size: 11px;
+        }
     </style>
 </head>
 <body>
-    <h1>API Debug Test - Complete</h1>
-    <div class="test-section">
-        <button onclick="testLogin()">1. Test Login API</button>
-        <button onclick="testLeaderboard()">2. Test Leaderboard</button>
-        <button onclick="testFriendsSearch()">3. Test Friends Search</button>
-        <button onclick="testAllEndpoints()">4. Test All Critical Endpoints</button>
-        <button onclick="clearOutput()">Clear Output</button>
+    <div class="container">
+        <h1>Mobile Sign-In Debug</h1>
+        
+        <div class="mobile-info">
+            <strong>Device Info:</strong><br>
+            User Agent: <span id="userAgent"></span><br>
+            Screen: <span id="screenSize"></span><br>
+            Network: <span id="networkInfo"></span>
+        </div>
+        
+        <div class="test-section">
+            <button onclick="testMobileLogin()">🔍 Test Mobile Login Issue</button>
+            <button onclick="testCORS()">🌐 Test CORS Headers</button>
+            <button onclick="testNetworkConditions()">📶 Test Network Conditions</button>
+            <button onclick="clearOutput()">🧹 Clear Output</button>
+        </div>
+        
+        <div id="output"></div>
     </div>
-    <div id="output"></div>
     
     <script>
+        // Display device info
+        document.getElementById('userAgent').textContent = navigator.userAgent;
+        document.getElementById('screenSize').textContent = `${window.innerWidth}x${window.innerHeight}`;
+        document.getElementById('networkInfo').textContent = navigator.connection ? 
+            `${navigator.connection.effectiveType} (${navigator.connection.downlink}Mbps)` : 'Unknown';
+        
         const baseUrl = 'https://chrysalis-mindfulness-app.onrender.com/api';
-        let authToken = null;
         
         function log(message, type = 'info') {
             const output = document.getElementById('output');
             const className = type === 'error' ? 'error' : type === 'success' ? 'success' : type === 'warning' ? 'warning' : '';
-            output.innerHTML += `<div class="${className}">[${new Date().toLocaleTimeString()}] ${message}</div>`;
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${className}`;
+            entry.innerHTML = `[${timestamp}] ${message}`;
+            output.appendChild(entry);
             output.scrollTop = output.scrollHeight;
         }
         
@@ -38,160 +106,177 @@
             document.getElementById('output').innerHTML = '';
         }
         
-        async function makeRequest(endpoint, options = {}) {
+        async function testMobileLogin() {
+            log('🔍 Testing Mobile Login Issue...', 'info');
+            log(`📱 Device: ${navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop'}`);
+            
             try {
-                log(`Making request to: ${baseUrl}${endpoint}`);
+                // Test with exact same config as production app
+                log('📡 Making login request...');
                 
-                const headers = {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    ...options.headers
-                };
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => {
+                    controller.abort();
+                    log('⏰ Request timed out after 20 seconds', 'error');
+                }, 20000);
                 
-                if (authToken) {
-                    headers.Authorization = `Bearer ${authToken}`;
-                }
+                const startTime = performance.now();
                 
-                const response = await fetch(`${baseUrl}${endpoint}`, {
-                    ...options,
-                    headers
+                const response = await fetch(`${baseUrl}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'User-Agent': navigator.userAgent,
+                        'Origin': window.location.origin
+                    },
+                    body: JSON.stringify({
+                        email: 'test@example.com',
+                        password: 'wrongpassword'
+                    }),
+                    signal: controller.signal
                 });
                 
-                log(`Response: ${response.status} ${response.statusText}`);
-                log(`Content-Type: ${response.headers.get('content-type')}`);
+                clearTimeout(timeoutId);
+                const responseTime = Math.round(performance.now() - startTime);
                 
-                const text = await response.text();
-                log(`Raw response (first 300 chars): ${text.substring(0, 300)}${text.length > 300 ? '...' : ''}`);
+                log(`📊 Response received in ${responseTime}ms`, 'info');
+                log(`📈 Status: ${response.status} ${response.statusText}`);
+                log(`📋 Response OK: ${response.ok}`);
+                log(`🔄 Response Type: ${response.type}`);
+                log(`📍 Response URL: ${response.url}`);
                 
-                if (response.headers.get('content-type')?.includes('application/json')) {
+                // Check all headers
+                const headers = {};
+                for (let [key, value] of response.headers.entries()) {
+                    headers[key] = value;
+                }
+                log(`📄 Response Headers: ${JSON.stringify(headers, null, 2)}`);
+                
+                const contentType = response.headers.get('content-type');
+                log(`📝 Content-Type: ${contentType || 'MISSING!'}`);
+                
+                // Get response text
+                const responseText = await response.text();
+                log(`📏 Response Length: ${responseText.length} chars`);
+                log(`📄 Raw Response (first 500 chars): ${responseText.substring(0, 500)}${responseText.length > 500 ? '...' : ''}`);
+                
+                // Check if it's HTML
+                if (responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<html')) {
+                    log('❌ PROBLEM: Received HTML instead of JSON!', 'error');
+                    log('🔍 This means the server is returning an error page', 'error');
+                    
+                    // Look for common error indicators
+                    if (responseText.includes('Application Error')) {
+                        log('💥 Server Application Error detected', 'error');
+                    }
+                    if (responseText.includes('503 Service Unavailable')) {
+                        log('🚫 Service Unavailable (503) detected', 'error');
+                    }
+                    if (responseText.includes('Bad Gateway')) {
+                        log('🌉 Bad Gateway error detected', 'error');
+                    }
+                } else {
+                    // Try to parse JSON
                     try {
-                        const data = JSON.parse(text);
-                        log(`✅ Valid JSON received`, 'success');
-                        return { success: true, data, status: response.status };
-                    } catch (e) {
-                        log(`❌ JSON Parse Error: ${e.message}`, 'error');
-                        return { success: false, error: 'Invalid JSON', rawText: text };
+                        const data = JSON.parse(responseText);
+                        log('✅ Valid JSON received!', 'success');
+                        log(`📦 Parsed Data: ${JSON.stringify(data, null, 2)}`);
+                        
+                        if (data.success === false && data.error === 'Invalid credentials') {
+                            log('✅ Login working correctly (expected invalid credentials error)', 'success');
+                        }
+                    } catch (jsonError) {
+                        log(`❌ JSON Parse Error: ${jsonError.message}`, 'error');
+                        log('🔍 This indicates the response is not valid JSON', 'error');
                     }
-                } else {
-                    log(`❌ Non-JSON response received`, 'error');
-                    return { success: false, error: 'Non-JSON response', rawText: text };
                 }
+                
             } catch (error) {
-                log(`❌ Network Error: ${error.message}`, 'error');
-                return { success: false, error: error.message };
-            }
-        }
-        
-        async function testLogin() {
-            log('=== TESTING LOGIN API ===');
-            
-            // Test 1: Invalid credentials (should return 401 with JSON)
-            log('Testing invalid credentials...');
-            const invalidResult = await makeRequest('/auth/login', {
-                method: 'POST',
-                body: JSON.stringify({
-                    email: 'test@example.com',
-                    password: 'wrongpassword'
-                })
-            });
-            
-            if (invalidResult.success && invalidResult.status === 401) {
-                log('✅ Invalid login properly returns 401 JSON', 'success');
-            } else {
-                log('❌ Invalid login test failed', 'error');
-            }
-            
-            // Test 2: Valid credentials (if we have test user)
-            log('Testing valid credentials...');
-            const validResult = await makeRequest('/auth/login', {
-                method: 'POST',  
-                body: JSON.stringify({
-                    email: 'real@example.com',
-                    password: 'SecurePass123!'
-                })
-            });
-            
-            if (validResult.success && validResult.data.token) {
-                authToken = validResult.data.token;
-                log('✅ Valid login successful, token received', 'success');
-            } else {
-                log('⚠️ Valid login failed (might not have test user)', 'warning');
-            }
-        }
-        
-        async function testLeaderboard() {
-            log('=== TESTING LEADERBOARD ===');
-            
-            const result = await makeRequest('/leaderboards/global?limit=10');
-            
-            if (result.success) {
-                const leaderboard = result.data.leaderboard || [];
-                log(`✅ Leaderboard loaded with ${leaderboard.length} users`, 'success');
+                log(`💥 Network Error: ${error.message}`, 'error');
+                log(`🔍 Error Type: ${error.constructor.name}`, 'error');
                 
-                if (leaderboard.length > 0) {
-                    log('Current leaderboard users:');
-                    leaderboard.forEach((user, i) => {
-                        log(`${i+1}. ${user.display_name || user.displayName} - ${user.total_minutes || user.totalMinutes} minutes`);
-                    });
-                    
-                    // Check for test users
-                    const testUsers = leaderboard.filter(u => 
-                        (u.display_name || u.displayName || '').toLowerCase().includes('test') ||
-                        (u.email || '').toLowerCase().includes('test')
-                    );
-                    
-                    if (testUsers.length > 0) {
-                        log(`❌ Found ${testUsers.length} test users polluting leaderboard!`, 'error');
-                        testUsers.forEach(user => {
-                            log(`Test user: ${user.display_name || user.displayName} (${user.email || 'no email'})`, 'error');
-                        });
-                    } else {
-                        log('✅ No obvious test users found', 'success');
+                if (error.name === 'AbortError') {
+                    log('⏰ Request was aborted (timeout)', 'error');
+                } else if (error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
+                    log('🌐 Network connectivity issue', 'error');
+                } else {
+                    log(`🔍 Unexpected error: ${error.stack}`, 'error');
+                }
+            }
+        }
+        
+        async function testCORS() {
+            log('🌐 Testing CORS Headers...', 'info');
+            
+            try {
+                const response = await fetch(`${baseUrl}/health`, {
+                    method: 'GET',
+                    headers: {
+                        'Origin': window.location.origin
                     }
-                } else {
-                    log('⚠️ Leaderboard is empty', 'warning');
-                }
-            } else {
-                log('❌ Leaderboard test failed', 'error');
-            }
-        }
-        
-        async function testFriendsSearch() {
-            log('=== TESTING FRIENDS SEARCH ===');
-            
-            if (!authToken) {
-                log('❌ No auth token - need to login first', 'error');
-                return;
-            }
-            
-            const result = await makeRequest('/friends/search?query=test');
-            
-            if (result.success) {
-                const users = result.data.users || [];
-                log(`✅ Friends search returned ${users.length} users`, 'success');
+                });
                 
-                if (users.length > 0) {
-                    log('Search results:');
-                    users.forEach((user, i) => {
-                        log(`${i+1}. ${user.display_name || user.displayName} - Level ${user.level}`);
-                    });
-                } else {
-                    log('⚠️ No users found in search', 'warning');
-                }
-            } else {
-                log('❌ Friends search failed', 'error');
+                log(`✅ CORS Test Response: ${response.status}`);
+                
+                const corsHeaders = [
+                    'access-control-allow-origin',
+                    'access-control-allow-methods', 
+                    'access-control-allow-headers',
+                    'access-control-allow-credentials'
+                ];
+                
+                corsHeaders.forEach(header => {
+                    const value = response.headers.get(header);
+                    log(`🔍 ${header}: ${value || 'NOT SET'}`);
+                });
+                
+            } catch (error) {
+                log(`❌ CORS Test Failed: ${error.message}`, 'error');
             }
         }
         
-        async function testAllEndpoints() {
-            log('=== RUNNING COMPLETE API TEST ===');
-            await testLogin();
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
-            await testLeaderboard();
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second  
-            await testFriendsSearch();
-            log('=== COMPLETE API TEST FINISHED ===');
+        async function testNetworkConditions() {
+            log('📶 Testing Network Conditions...', 'info');
+            
+            // Test basic connectivity
+            const startTime = performance.now();
+            try {
+                const response = await fetch(`${baseUrl}/health`);
+                const endTime = performance.now();
+                const responseTime = Math.round(endTime - startTime);
+                
+                log(`✅ Health check: ${response.status} in ${responseTime}ms`);
+                
+                if (responseTime > 5000) {
+                    log('⚠️ Slow network detected (>5s)', 'warning');
+                } else if (responseTime > 2000) {
+                    log('⚠️ Moderate latency detected (>2s)', 'warning');
+                } else {
+                    log('✅ Good network speed', 'success');
+                }
+                
+                // Test if backend is actually responding
+                const text = await response.text();
+                try {
+                    const data = JSON.parse(text);
+                    log(`✅ Backend responding with valid JSON: ${JSON.stringify(data)}`);
+                } catch {
+                    log(`❌ Backend not returning JSON: ${text.substring(0, 100)}`, 'error');
+                }
+                
+            } catch (error) {
+                log(`❌ Network test failed: ${error.message}`, 'error');
+            }
         }
+        
+        // Auto-run mobile test on load
+        setTimeout(() => {
+            if (navigator.userAgent.includes('Mobile')) {
+                log('📱 Mobile device detected - running automatic test...', 'info');
+                testMobileLogin();
+            }
+        }, 1000);
     </script>
 </body>
 </html>

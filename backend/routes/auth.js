@@ -98,10 +98,8 @@ router.post('/register', async (req, res) => {
     // Create user
     const userId = await userHelpers.create({
       email,
-      password_hash: passwordHash,
-      display_name,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      passwordHash: passwordHash,
+      displayName: display_name
     });
 
     // Get created user

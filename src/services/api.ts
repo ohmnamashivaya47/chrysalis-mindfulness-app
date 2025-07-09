@@ -262,12 +262,24 @@ class ChrysalisAPIService {
         throw new Error('Server returned invalid data format. Please try again.');
       }
       
-      if (!data.success) {
+      // Check for explicit error in response
+      if (data.success === false || data.error) {
         throw new Error(data.error || data.message || 'API request failed');
       }
       
-      console.log(`[API Success] ${endpoint} completed successfully`);
-      return data;
+      // For auth endpoints, treat response as successful if it has user and token fields
+      if ((endpoint.includes('/auth/') || endpoint.includes('/users/')) && data.user && data.token) {
+        console.log(`[API Success] ${endpoint} completed successfully (auth response)`);
+        return data;
+      }
+      
+      // For other endpoints, treat as successful if success field is true or missing (default to success)
+      if (data.success !== false) {
+        console.log(`[API Success] ${endpoint} completed successfully`);
+        return data;
+      }
+      
+      throw new Error('API request failed');
       
     } catch (error) {
       if (error instanceof Error) {
