@@ -102,8 +102,19 @@ export const LoginScreen = () => {
                 className="w-full px-4 py-3 border border-primary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 placeholder="Enter your password"
                 required
-                minLength={6}
+                minLength={8}
               />
+              {isSignUp && (
+                <div className="mt-2 text-xs text-primary-600 space-y-1">
+                  <p>Password requirements:</p>
+                  <ul className="list-disc list-inside space-y-1 ml-2">
+                    <li>At least 8 characters long</li>
+                    <li>At least one uppercase letter (A-Z)</li>
+                    <li>At least one lowercase letter (a-z)</li>
+                    <li>At least one number (0-9)</li>
+                  </ul>
+                </div>
+              )}
             </div>
 
             {error && (

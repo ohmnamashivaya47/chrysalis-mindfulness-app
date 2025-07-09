@@ -121,6 +121,21 @@ class ChrysalisAPIService {
     };
   }
 
+  // Helper function to map backend leaderboard entry to frontend format
+  private mapLeaderboardEntry(backendEntry: Record<string, unknown>): LeaderboardEntry {
+    return {
+      id: backendEntry.id as string,
+      displayName: (backendEntry.display_name as string) || 'Unknown User',
+      profilePicture: backendEntry.profile_picture as string,
+      totalMinutes: (backendEntry.total_minutes as number) || 0,
+      totalSessions: (backendEntry.total_sessions as number) || 0,
+      currentStreak: (backendEntry.current_streak as number) || 0,
+      level: (backendEntry.level as number) || 1,
+      experience: (backendEntry.experience as number) || 0,
+      rank: (backendEntry.rank as number) || 0
+    };
+  }
+
   private setAuthToken(token: string | null): void {
     this.token = token;
     if (token) {
@@ -152,34 +167,63 @@ class ChrysalisAPIService {
     };
 
     try {
-      const response = await fetch(url, config);
+      // Add longer timeout for mobile networks
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+      
+      const response = await fetch(url, {
+        ...config,
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
       
       if (!response.ok) {
         let errorMessage = `HTTP ${response.status}`;
         try {
-          const errorData = await response.json();
-          errorMessage = errorData.error || errorData.message || errorMessage;
-        } catch {
-          // If we can't parse JSON, try to get text response for debugging
-          try {
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const errorData = await response.json();
+            errorMessage = errorData.error || errorData.message || errorMessage;
+          } else {
+            // Server returned HTML or other non-JSON response
             const textResponse = await response.text();
             console.error(`API Error - Non-JSON response from ${endpoint}:`, textResponse.substring(0, 200));
-            errorMessage = `Server error (${response.status}). Check console for details.`;
-          } catch {
-            console.error(`API Error - Could not read response from ${endpoint}`);
+            
+            if (textResponse.includes('<!DOCTYPE html>')) {
+              errorMessage = 'Server error - received HTML instead of JSON. Please check your internet connection and try again.';
+            } else {
+              errorMessage = `Server error (${response.status}). Please try again.`;
+            }
           }
+        } catch (parseError) {
+          console.error(`API Error - Could not parse error response from ${endpoint}:`, parseError);
+          errorMessage = `Network error (${response.status}). Please check your connection and try again.`;
         }
         throw new Error(errorMessage);
       }
 
       let data;
       try {
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          const textResponse = await response.text();
+          console.error(`API Error - Invalid content-type from ${endpoint}:`, contentType);
+          console.error('Response text:', textResponse.substring(0, 200));
+          
+          if (textResponse.includes('<!DOCTYPE html>')) {
+            throw new Error('Server returned HTML page instead of JSON. Please check your internet connection.');
+          } else {
+            throw new Error('Server returned invalid response format. Please try again.');
+          }
+        }
+        
         data = await response.json();
-      } catch {
-        console.error(`API Error - Invalid JSON response from ${endpoint}`);
+      } catch (jsonError) {
+        console.error(`API Error - Invalid JSON response from ${endpoint}:`, jsonError);
         const textResponse = await response.text();
         console.error('Response text:', textResponse.substring(0, 200));
-        throw new Error('Server returned invalid response format');
+        throw new Error('Server returned invalid JSON response. Please check your connection and try again.');
       }
       
       if (!data.success) {
@@ -188,8 +232,21 @@ class ChrysalisAPIService {
       
       return data;
     } catch (error) {
-      console.error(`API Error (${endpoint}):`, error);
-      throw error;
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          console.error(`API Timeout (${endpoint}):`, error);
+          throw new Error('Request timed out. Please check your internet connection and try again.');
+        } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+          console.error(`API Network Error (${endpoint}):`, error);
+          throw new Error('Network error. Please check your internet connection and try again.');
+        } else {
+          console.error(`API Error (${endpoint}):`, error);
+          throw error;
+        }
+      } else {
+        console.error(`API Unknown Error (${endpoint}):`, error);
+        throw new Error('An unexpected error occurred. Please try again.');
+      }
     }
   }
 
@@ -344,11 +401,17 @@ class ChrysalisAPIService {
     period: string;
     type: string;
   }> {
-    return this.request<{
-      leaderboard: LeaderboardEntry[];
+    const response = await this.request<{
+      leaderboard: Record<string, unknown>[];
       period: string;
       type: string;
     }>(`/leaderboards/global?limit=${limit}`);
+    
+    return {
+      leaderboard: response.leaderboard.map(entry => this.mapLeaderboardEntry(entry)),
+      period: response.period,
+      type: response.type
+    };
   }
 
   async getLocalLeaderboard(limit = 50): Promise<{
@@ -356,11 +419,17 @@ class ChrysalisAPIService {
     period: string;
     type: string;
   }> {
-    return this.request<{
-      leaderboard: LeaderboardEntry[];
+    const response = await this.request<{
+      leaderboard: Record<string, unknown>[];
       period: string;
       type: string;
     }>(`/leaderboards/local?limit=${limit}`);
+    
+    return {
+      leaderboard: response.leaderboard.map(entry => this.mapLeaderboardEntry(entry)),
+      period: response.period,
+      type: response.type
+    };
   }
 
   async getFriendsLeaderboard(): Promise<{
@@ -368,11 +437,17 @@ class ChrysalisAPIService {
     period: string;
     type: string;
   }> {
-    return this.request<{
-      leaderboard: LeaderboardEntry[];
+    const response = await this.request<{
+      leaderboard: Record<string, unknown>[];
       period: string;
       type: string;
     }>('/leaderboards/friends');
+    
+    return {
+      leaderboard: response.leaderboard.map(entry => this.mapLeaderboardEntry(entry)),
+      period: response.period,
+      type: response.type
+    };
   }
 
   // SOCIAL METHODS - Friends
@@ -424,7 +499,12 @@ class ChrysalisAPIService {
   }
 
   async searchUsers(query: string): Promise<{ users: User[] }> {
-    return this.request<{ users: User[] }>(`/friends/search?query=${encodeURIComponent(query)}`);
+    const response = await this.request<{ users: BackendUser[] }>(`/friends/search?query=${encodeURIComponent(query)}`);
+    
+    // Map backend users to frontend users
+    const mappedUsers = response.users.map(user => this.mapBackendUser(user));
+    
+    return { users: mappedUsers };
   }
 
   // SOCIAL METHODS - Groups
