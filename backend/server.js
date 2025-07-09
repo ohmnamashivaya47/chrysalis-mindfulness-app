@@ -21,6 +21,7 @@ const groupRoutes = require('./routes/groups');
 const leaderboardRoutes = require('./routes/leaderboards');
 const presenceRoutes = require('./routes/presence');
 const wisdomRoutes = require('./routes/wisdom');
+const adminRoutes = require('./routes/admin');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -122,6 +123,7 @@ app.use('/api/groups', groupRoutes);
 app.use('/api/leaderboards', leaderboardRoutes);
 app.use('/api/presence', presenceRoutes);
 app.use('/api/wisdom', wisdomRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

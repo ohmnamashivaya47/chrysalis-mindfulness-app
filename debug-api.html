@@ -1,59 +1,196 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>API Debug Test</title>
+    <title>API Debug Test - Complete</title>
+    <style>
+        body { font-family: monospace; margin: 20px; }
+        .test-section { border: 1px solid #ccc; margin: 10px 0; padding: 10px; }
+        .success { color: green; }
+        .error { color: red; }
+        .warning { color: orange; }
+        button { margin: 5px; padding: 10px; }
+        #output { max-height: 500px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; }
+    </style>
 </head>
 <body>
-    <h1>API Debug Test</h1>
-    <button onclick="testAPI()">Test Production API</button>
+    <h1>API Debug Test - Complete</h1>
+    <div class="test-section">
+        <button onclick="testLogin()">1. Test Login API</button>
+        <button onclick="testLeaderboard()">2. Test Leaderboard</button>
+        <button onclick="testFriendsSearch()">3. Test Friends Search</button>
+        <button onclick="testAllEndpoints()">4. Test All Critical Endpoints</button>
+        <button onclick="clearOutput()">Clear Output</button>
+    </div>
     <div id="output"></div>
     
     <script>
-        async function testAPI() {
+        const baseUrl = 'https://chrysalis-mindfulness-app.onrender.com/api';
+        let authToken = null;
+        
+        function log(message, type = 'info') {
             const output = document.getElementById('output');
-            output.innerHTML = 'Testing...';
-            
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : type === 'warning' ? 'warning' : '';
+            output.innerHTML += `<div class="${className}">[${new Date().toLocaleTimeString()}] ${message}</div>`;
+            output.scrollTop = output.scrollHeight;
+        }
+        
+        function clearOutput() {
+            document.getElementById('output').innerHTML = '';
+        }
+        
+        async function makeRequest(endpoint, options = {}) {
             try {
-                // Test the exact same configuration as the production app
-                const isDev = window.location.hostname === 'localhost';
-                const baseUrl = isDev 
-                    ? 'http://localhost:3001/api'
-                    : 'https://chrysalis-mindfulness-app.onrender.com/api';
+                log(`Making request to: ${baseUrl}${endpoint}`);
                 
-                output.innerHTML += `<br>Using baseUrl: ${baseUrl}`;
+                const headers = {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    ...options.headers
+                };
                 
-                const response = await fetch(`${baseUrl}/auth/login`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        email: 'test@example.com',
-                        password: 'wrong'
-                    })
-                });
-                
-                output.innerHTML += `<br>Response status: ${response.status}`;
-                output.innerHTML += `<br>Response ok: ${response.ok}`;
-                output.innerHTML += `<br>Response type: ${response.type}`;
-                
-                const contentType = response.headers.get('content-type');
-                output.innerHTML += `<br>Content-Type: ${contentType}`;
-                
-                const text = await response.text();
-                output.innerHTML += `<br>Raw response: ${text.substring(0, 200)}`;
-                
-                if (contentType && contentType.includes('application/json')) {
-                    const data = JSON.parse(text);
-                    output.innerHTML += `<br>Parsed JSON: ${JSON.stringify(data)}`;
-                } else {
-                    output.innerHTML += `<br>❌ NOT JSON! Received: ${contentType}`;
+                if (authToken) {
+                    headers.Authorization = `Bearer ${authToken}`;
                 }
                 
+                const response = await fetch(`${baseUrl}${endpoint}`, {
+                    ...options,
+                    headers
+                });
+                
+                log(`Response: ${response.status} ${response.statusText}`);
+                log(`Content-Type: ${response.headers.get('content-type')}`);
+                
+                const text = await response.text();
+                log(`Raw response (first 300 chars): ${text.substring(0, 300)}${text.length > 300 ? '...' : ''}`);
+                
+                if (response.headers.get('content-type')?.includes('application/json')) {
+                    try {
+                        const data = JSON.parse(text);
+                        log(`✅ Valid JSON received`, 'success');
+                        return { success: true, data, status: response.status };
+                    } catch (e) {
+                        log(`❌ JSON Parse Error: ${e.message}`, 'error');
+                        return { success: false, error: 'Invalid JSON', rawText: text };
+                    }
+                } else {
+                    log(`❌ Non-JSON response received`, 'error');
+                    return { success: false, error: 'Non-JSON response', rawText: text };
+                }
             } catch (error) {
-                output.innerHTML += `<br>❌ Error: ${error.message}`;
-                console.error('Full error:', error);
+                log(`❌ Network Error: ${error.message}`, 'error');
+                return { success: false, error: error.message };
             }
+        }
+        
+        async function testLogin() {
+            log('=== TESTING LOGIN API ===');
+            
+            // Test 1: Invalid credentials (should return 401 with JSON)
+            log('Testing invalid credentials...');
+            const invalidResult = await makeRequest('/auth/login', {
+                method: 'POST',
+                body: JSON.stringify({
+                    email: 'test@example.com',
+                    password: 'wrongpassword'
+                })
+            });
+            
+            if (invalidResult.success && invalidResult.status === 401) {
+                log('✅ Invalid login properly returns 401 JSON', 'success');
+            } else {
+                log('❌ Invalid login test failed', 'error');
+            }
+            
+            // Test 2: Valid credentials (if we have test user)
+            log('Testing valid credentials...');
+            const validResult = await makeRequest('/auth/login', {
+                method: 'POST',  
+                body: JSON.stringify({
+                    email: 'real@example.com',
+                    password: 'SecurePass123!'
+                })
+            });
+            
+            if (validResult.success && validResult.data.token) {
+                authToken = validResult.data.token;
+                log('✅ Valid login successful, token received', 'success');
+            } else {
+                log('⚠️ Valid login failed (might not have test user)', 'warning');
+            }
+        }
+        
+        async function testLeaderboard() {
+            log('=== TESTING LEADERBOARD ===');
+            
+            const result = await makeRequest('/leaderboards/global?limit=10');
+            
+            if (result.success) {
+                const leaderboard = result.data.leaderboard || [];
+                log(`✅ Leaderboard loaded with ${leaderboard.length} users`, 'success');
+                
+                if (leaderboard.length > 0) {
+                    log('Current leaderboard users:');
+                    leaderboard.forEach((user, i) => {
+                        log(`${i+1}. ${user.display_name || user.displayName} - ${user.total_minutes || user.totalMinutes} minutes`);
+                    });
+                    
+                    // Check for test users
+                    const testUsers = leaderboard.filter(u => 
+                        (u.display_name || u.displayName || '').toLowerCase().includes('test') ||
+                        (u.email || '').toLowerCase().includes('test')
+                    );
+                    
+                    if (testUsers.length > 0) {
+                        log(`❌ Found ${testUsers.length} test users polluting leaderboard!`, 'error');
+                        testUsers.forEach(user => {
+                            log(`Test user: ${user.display_name || user.displayName} (${user.email || 'no email'})`, 'error');
+                        });
+                    } else {
+                        log('✅ No obvious test users found', 'success');
+                    }
+                } else {
+                    log('⚠️ Leaderboard is empty', 'warning');
+                }
+            } else {
+                log('❌ Leaderboard test failed', 'error');
+            }
+        }
+        
+        async function testFriendsSearch() {
+            log('=== TESTING FRIENDS SEARCH ===');
+            
+            if (!authToken) {
+                log('❌ No auth token - need to login first', 'error');
+                return;
+            }
+            
+            const result = await makeRequest('/friends/search?query=test');
+            
+            if (result.success) {
+                const users = result.data.users || [];
+                log(`✅ Friends search returned ${users.length} users`, 'success');
+                
+                if (users.length > 0) {
+                    log('Search results:');
+                    users.forEach((user, i) => {
+                        log(`${i+1}. ${user.display_name || user.displayName} - Level ${user.level}`);
+                    });
+                } else {
+                    log('⚠️ No users found in search', 'warning');
+                }
+            } else {
+                log('❌ Friends search failed', 'error');
+            }
+        }
+        
+        async function testAllEndpoints() {
+            log('=== RUNNING COMPLETE API TEST ===');
+            await testLogin();
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+            await testLeaderboard();
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second  
+            await testFriendsSearch();
+            log('=== COMPLETE API TEST FINISHED ===');
         }
     </script>
 </body>
