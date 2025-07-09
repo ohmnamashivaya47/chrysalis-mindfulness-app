@@ -1,6 +1,7 @@
 // CHRYSALIS - Express.js Backend Server for Render Deployment
 // Migrated from Netlify Functions to standalone Express API
 // Updated: 2025-07-09 - Fixed critical user registration bug
+// Force redeploy: Clean neon-db.js file with fixes
 
 const express = require('express');
 const cors = require('cors');
