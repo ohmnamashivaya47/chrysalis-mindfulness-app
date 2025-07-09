@@ -98,8 +98,10 @@ router.post('/register', async (req, res) => {
     // Create user
     const newUser = await userHelpers.create({
       email,
-      passwordHash: passwordHash,
-      displayName: display_name
+      password_hash: passwordHash,
+      display_name,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     });
 
     // Generate JWT token
