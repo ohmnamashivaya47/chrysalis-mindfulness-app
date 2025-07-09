@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Award, Clock, Star, Crown, Trophy, Leaf, BarChart3, CheckCircle, Camera, QrCode, Share, Copy } from 'lucide-react';
+import { Award, Clock, Star, Crown, Trophy, Leaf, BarChart3, CheckCircle, Camera, QrCode, Copy } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { useMeditationStore } from '../../stores/meditationStore';
 import { apiService } from '../../services/api';
@@ -121,7 +121,7 @@ export const Profile = () => {
     try {
       await navigator.clipboard.writeText(friendCode);
       setSaveSuccess('Friend code copied to clipboard!\n\u2014 Share it with others to connect mindfully.');
-    } catch (error) {
+    } catch {
       setSaveError('Could not copy to clipboard. Your friend code is: ' + friendCode);
     }
   };

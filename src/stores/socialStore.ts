@@ -107,8 +107,8 @@ export const useSocialStore = create<SocialState>((set, get) => ({
       const response = await apiService.getFriendRequests();
       set({ 
         friendRequests: {
-          incoming: response.incomingRequests,
-          outgoing: response.outgoingRequests,
+          incoming: response.requests.incoming,
+          outgoing: response.requests.outgoing,
         },
         isLoadingRequests: false 
       });
