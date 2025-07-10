@@ -2,7 +2,7 @@
 import jwt from 'jsonwebtoken';
 import { createPresenceSession, getUserSessions, updateUserStats } from './lib/fauna';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-jwt-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET || 'chrysalis-meditation-app-secret-key-production-2024';
 
 interface NetlifyEvent {
   httpMethod: string;

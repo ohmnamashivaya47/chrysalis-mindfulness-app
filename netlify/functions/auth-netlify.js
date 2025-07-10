@@ -3,6 +3,9 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { getStore } = require('@netlify/blobs');
 
+// JWT Configuration - Same as auth-utils
+const JWT_SECRET = process.env.JWT_SECRET || 'chrysalis-meditation-app-secret-key-production-2024';
+
 // Initialize user store
 const usersStore = getStore('users');
 
@@ -143,7 +146,7 @@ exports.handler = async (event, context) => {
       // Generate JWT token
       const token = jwt.sign(
         { userId: user.id, email: user.email },
-        process.env.JWT_SECRET,
+        JWT_SECRET,
         { expiresIn: '7d' }
       );
 
@@ -210,7 +213,7 @@ exports.handler = async (event, context) => {
       // Generate JWT token
       const token = jwt.sign(
         { userId: user.id, email: user.email },
-        process.env.JWT_SECRET,
+        JWT_SECRET,
         { expiresIn: '7d' }
       );
 
@@ -247,7 +250,7 @@ exports.handler = async (event, context) => {
       const token = authHeader.split(' ')[1];
       
       try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const decoded = jwt.verify(token, JWT_SECRET);
         const user = await userHelpers.getUserById(decoded.userId);
         
         if (!user) {

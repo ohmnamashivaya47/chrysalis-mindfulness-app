@@ -95,6 +95,8 @@ export const Profile = () => {
       // Use the backend API upload endpoint instead of Cloudinary directly
       const result = await apiService.uploadProfilePicture(file);
       setEditForm(prev => ({ ...prev, profilePicture: result.user.profilePicture || '' }));
+      // Update the user in the auth store immediately
+      setUser(result.user);
       setSaveSuccess('Profile picture uploaded successfully!');
     } catch (error) {
       setSaveError('Failed to upload image. Please try a smaller image or try again.');

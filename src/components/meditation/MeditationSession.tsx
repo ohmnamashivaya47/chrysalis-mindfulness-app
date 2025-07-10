@@ -104,12 +104,11 @@ export const MeditationSession = ({ onEnd }: MeditationSessionProps) => {
 
   const handleSessionComplete = useCallback(async () => {
     try {
-      meditation.startSession(selectedDuration, selectedFrequency)
       await meditation.completeSession()
     } catch (error) {
       console.error('Error completing session:', error)
     }
-  }, [meditation, selectedDuration, selectedFrequency])
+  }, [meditation])
 
   // Timer countdown
   useEffect(() => {
@@ -177,7 +176,7 @@ export const MeditationSession = ({ onEnd }: MeditationSessionProps) => {
     <div className="fixed inset-0 bg-gradient-to-br from-primary-900 via-primary-800 to-primary-700 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/30"></div>
       
-      <div className="relative z-10 text-center text-white px-6 max-w-md mx-auto">
+      <div className="relative z-10 text-center text-white px-4 sm:px-6 max-w-sm sm:max-w-2xl mx-auto w-full">
         <AnimatePresence mode="wait">
           {phase === 'preparation' && (
             <motion.div
@@ -185,17 +184,17 @@ export const MeditationSession = ({ onEnd }: MeditationSessionProps) => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="space-y-8"
+              className="space-y-6 sm:space-y-8"
             >
               <div>
-                <h2 className="text-3xl font-bold mb-4">Set Your Session</h2>
-                <p className="text-white/80">Choose duration and frequency for your meditation</p>
+                <h2 className="text-2xl sm:text-3xl font-bold mb-2 sm:mb-4">Set Your Session</h2>
+                <p className="text-white/80 text-sm sm:text-base">Choose duration and frequency for your meditation</p>
               </div>
 
               {/* Duration Selection */}
               <div>
-                <h3 className="text-xl font-bold mb-4">Duration</h3>
-                <div className="grid grid-cols-4 gap-2 mb-6">
+                <h3 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4">Duration</h3>
+                <div className="grid grid-cols-4 gap-2 mb-4 sm:mb-6">
                   {durations.map((duration) => (
                     <motion.button
                       key={duration}
@@ -219,66 +218,68 @@ export const MeditationSession = ({ onEnd }: MeditationSessionProps) => {
 
               {/* Frequency Selection */}
               <div>
-                <h3 className="text-xl font-bold mb-4">Binaural Frequency</h3>
-                <div className="grid grid-cols-2 gap-4">
+                <h3 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4">Binaural Frequency</h3>
+                <div className="grid grid-cols-2 gap-2 sm:gap-4">
                   {Object.entries(frequencies).map(([key, freq]) => (
                     <motion.button
                       key={key}
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => setSelectedFrequency(key as FrequencyType)}
-                      className={`p-4 rounded-xl border-2 transition-all ${
+                      className={`p-3 sm:p-4 rounded-xl border-2 transition-all ${
                         selectedFrequency === key
                           ? 'border-white bg-white/20'
                           : 'border-white/30 bg-white/10'
                       }`}
                     >
-                      <div className="text-lg font-bold">{freq.name}</div>
-                      <div className="text-sm text-white/80">{freq.hz} Hz</div>
+                      <div className="text-sm sm:text-lg font-bold">{freq.name}</div>
+                      <div className="text-xs sm:text-sm text-white/80">{freq.hz} Hz</div>
                       <div className="text-xs text-white/60">{freq.description}</div>
                     </motion.button>
                   ))}
                 </div>
-                <div className="flex items-center justify-center mt-4">
+                <div className="flex items-center justify-center mt-3 sm:mt-4">
                   <label className="flex items-center gap-2 cursor-pointer select-none">
                     <input
                       type="checkbox"
                       checked={noAudio}
                       onChange={() => setNoAudio(v => !v)}
-                      className="form-checkbox h-5 w-5 text-primary-600"
+                      className="form-checkbox h-4 w-4 sm:h-5 sm:w-5 text-primary-600"
                     />
-                    <span className="text-white font-medium">No Audio</span>
+                    <span className="text-white font-medium text-sm sm:text-base">No Audio</span>
                   </label>
                 </div>
               </div>
 
               {/* Action Buttons */}
-              <div className="space-y-4 mt-8">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => {
-                    setTimeLeft(selectedDuration * 60)
-                    setPhase('meditation')
-                    meditation.startSession(selectedDuration, selectedFrequency)
-                    // Start binaural beats audio
-                    if (!noAudio) {
-                      startBinauralBeats(selectedFrequency)
-                    }
-                  }}
-                  className="w-full bg-gradient-to-r from-primary-600 to-primary-700 text-white font-bold py-4 px-8 rounded-xl shadow-lg"
-                >
-                  Start Meditation ({selectedDuration} min)
-                </motion.button>
-                
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={onEnd}
-                  className="w-full bg-white/20 text-white font-medium py-3 px-6 rounded-xl border border-white/30"
-                >
-                  Back to Home
-                </motion.button>
+              <div className="mt-6 sm:mt-8">
+                <div className="flex flex-row gap-3 w-full">
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => {
+                      setTimeLeft(selectedDuration * 60)
+                      setPhase('meditation')
+                      meditation.startSession(selectedDuration, selectedFrequency)
+                      // Start binaural beats audio
+                      if (!noAudio) {
+                        startBinauralBeats(selectedFrequency)
+                      }
+                    }}
+                    className="flex-1 bg-gradient-to-r from-primary-600 to-primary-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg text-sm"
+                  >
+                    Start ({selectedDuration} min)
+                  </motion.button>
+                  
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={onEnd}
+                    className="flex-1 bg-white/20 text-white font-medium py-3 px-4 rounded-xl border border-white/30 text-sm"
+                  >
+                    Back to Home
+                  </motion.button>
+                </div>
               </div>
             </motion.div>
           )}

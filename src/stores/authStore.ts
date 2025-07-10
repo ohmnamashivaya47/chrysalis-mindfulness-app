@@ -7,7 +7,7 @@ interface AuthState {
   error: string | null
   showOnboarding: boolean
   signIn: (email: string, password: string) => Promise<void>
-  signUp: (email: string, password: string, displayName: string) => Promise<void>
+  signUp: (email: string, password: string, displayName: string, gender?: 'male' | 'female' | 'other') => Promise<void>
   login: (email: string, password: string) => Promise<void>
   register: (email: string, password: string, displayName: string) => Promise<void>
   signOut: () => Promise<void>
@@ -41,10 +41,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
   
-  signUp: async (email: string, password: string, displayName: string) => {
+  signUp: async (email: string, password: string, displayName: string, gender: 'male' | 'female' | 'other' = 'other') => {
     set({ loading: true, error: null })
     try {
-      const response = await apiService.register(email, password, displayName)
+      const response = await apiService.register(email, password, displayName, gender)
       set({ user: response.user, loading: false })
     } catch (error: unknown) {
       if (error instanceof Error) {

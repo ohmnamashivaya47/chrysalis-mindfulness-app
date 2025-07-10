@@ -9,6 +9,7 @@ export const LoginScreen = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [displayName, setDisplayName] = useState('')
+  const [gender, setGender] = useState<'male' | 'female' | 'other'>('other')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -21,7 +22,7 @@ export const LoginScreen = () => {
 
     try {
       if (isSignUp) {
-        await signUp(email, password, displayName)
+        await signUp(email, password, displayName, gender)
       } else {
         await signIn(email, password)
       }
@@ -59,20 +60,38 @@ export const LoginScreen = () => {
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
             {isSignUp && (
-              <div>
-                <label htmlFor="displayName" className="block text-sm font-medium text-primary-700 mb-2">
-                  Display Name
-                </label>
-                <input
-                  id="displayName"
-                  type="text"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  className="w-full px-4 py-3 border border-primary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  placeholder="Enter your name"
-                  required={isSignUp}
-                />
-              </div>
+              <>
+                <div>
+                  <label htmlFor="displayName" className="block text-sm font-medium text-primary-700 mb-2">
+                    Display Name
+                  </label>
+                  <input
+                    id="displayName"
+                    type="text"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    className="w-full px-4 py-3 border border-primary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    placeholder="Enter your name"
+                    required={isSignUp}
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="gender" className="block text-sm font-medium text-primary-700 mb-2">
+                    Gender (for personalized avatar)
+                  </label>
+                  <select
+                    id="gender"
+                    value={gender}
+                    onChange={(e) => setGender(e.target.value as 'male' | 'female' | 'other')}
+                    className="w-full px-4 py-3 border border-primary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  >
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+              </>
             )}
 
             <div>
@@ -102,17 +121,11 @@ export const LoginScreen = () => {
                 className="w-full px-4 py-3 border border-primary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 placeholder="Enter your password"
                 required
-                minLength={8}
+                minLength={6}
               />
               {isSignUp && (
-                <div className="mt-2 text-xs text-primary-600 space-y-1">
-                  <p>Password requirements:</p>
-                  <ul className="list-disc list-inside space-y-1 ml-2">
-                    <li>At least 8 characters long</li>
-                    <li>At least one uppercase letter (A-Z)</li>
-                    <li>At least one lowercase letter (a-z)</li>
-                    <li>At least one number (0-9)</li>
-                  </ul>
+                <div className="mt-2 text-xs text-primary-600">
+                  <p>Password must be at least 6 characters long</p>
                 </div>
               )}
             </div>

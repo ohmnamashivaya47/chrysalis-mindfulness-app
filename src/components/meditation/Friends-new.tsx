@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Users, QrCode, Copy, Heart, MessageCircle, UserCheck } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { useSocialStore } from '../../stores/socialStore';
-import { apiService } from '../../services/api';
 
 const Friends: React.FC = () => {
   const { user } = useAuthStore();
@@ -13,18 +12,12 @@ const Friends: React.FC = () => {
   const [scanFriendCode, setScanFriendCode] = useState('');
   const [notification, setNotification] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
     if (user) {
       setMyFriendCode(user.id);
-      try {
-        fetchFriends();
-        fetchFriendRequests();
-      } catch (error) {
-        console.error('Error loading friends:', error);
-        setHasError(true);
-      }
+      fetchFriends();
+      fetchFriendRequests();
     }
   }, [user, fetchFriends, fetchFriendRequests]);
 
@@ -48,18 +41,13 @@ const Friends: React.FC = () => {
 
     setIsLoading(true);
     try {
-      // Use the instant friendship endpoint for QR code scanning
-      const response = await apiService.addFriendInstant(scanFriendCode.trim());
-      setNotification(`Friend added successfully! You are now friends with ${response.friend?.name || 'the user'}.`);
+      // Use the friend code as user ID to add friend directly
+      await useSocialStore.getState().addFriend(scanFriendCode.trim());
+      setNotification('Friend request sent!');
       setScanFriendCode('');
-      
-      // Refresh friends list
-      fetchFriends();
-      
-      setTimeout(() => setNotification(''), 4000);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Could not add friend. Check the code and try again.';
-      setNotification(errorMessage);
+      setTimeout(() => setNotification(''), 3000);
+    } catch {
+      setNotification('Could not add friend. Check the code and try again.');
       setTimeout(() => setNotification(''), 3000);
     } finally {
       setIsLoading(false);
@@ -94,34 +82,6 @@ const Friends: React.FC = () => {
           Share presence with fellow practitioners
         </p>
       </div>
-
-      {/* Error State */}
-      {hasError && (
-        <div className="text-center py-8">
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-            <p className="text-gray-600 mb-4">
-              Friends feature is still loading. This is normal for new accounts.
-            </p>
-            <button
-              onClick={() => {
-                setHasError(false);
-                if (user) {
-                  try {
-                    fetchFriends();
-                    fetchFriendRequests();
-                  } catch (error) {
-                    console.error('Error reloading friends:', error);
-                    setHasError(true);
-                  }
-                }
-              }}
-              className="bg-[#1B4332] text-white px-4 py-2 rounded-lg hover:bg-[#0F2A1E] transition-colors"
-            >
-              Try Again
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Notification */}
       <AnimatePresence>
@@ -198,7 +158,7 @@ const Friends: React.FC = () => {
                       <button className="p-2 text-gray-400 hover:text-[#FF8A65] transition-colors">
                         <MessageCircle className="h-4 w-4" />
                       </button>
-                      <div className="w-2 h-2 rounded-full bg-green-400" />
+                      <div className="w-2 h-2 rounded-full bg-gray-300" />
                     </div>
                   </div>
                 ))}

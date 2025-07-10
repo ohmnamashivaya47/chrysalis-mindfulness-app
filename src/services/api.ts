@@ -33,6 +33,7 @@ interface User {
   email: string;
   displayName: string;
   profilePicture?: string;
+  gender?: 'male' | 'female' | 'other';
   joinedAt: string;
   totalSessions: number;
   totalMinutes: number;
@@ -75,6 +76,7 @@ interface SessionData {
 
 interface LeaderboardEntry {
   id: string;
+  name?: string;
   displayName: string;
   profilePicture?: string;
   totalMinutes: number;
@@ -83,12 +85,13 @@ interface LeaderboardEntry {
   level: number;
   experience: number;
   rank: number;
+  isCurrentUser?: boolean;
 }
 
 class ChrysalisAPIService {
   private baseUrl = import.meta.env.DEV 
-    ? 'http://localhost:3001/api'
-    : 'https://chrysalis-mindfulness-app.onrender.com/api';
+    ? '/.netlify/functions'
+    : 'https://chrysalis-presence-app.netlify.app/.netlify/functions';
 
   private token: string | null = null;
 
@@ -302,25 +305,26 @@ class ChrysalisAPIService {
 
   // AUTHENTICATION METHODS
 
-  async register(email: string, password: string, displayName: string): Promise<{
+  async register(email: string, password: string, displayName: string, gender: 'male' | 'female' | 'other' = 'other'): Promise<{
     user: User;
     token: string;
   }> {
-    const response = await this.request<{ user: BackendUser; token: string }>('/auth/register', {
+    const response = await this.request<{ data: { user: BackendUser; token: string } }>('/auth-register', {
       method: 'POST',
       body: JSON.stringify({ 
         email, 
         password, 
-        display_name: displayName
+        displayName,
+        gender
       }),
     });
 
     // Store the auth token
-    this.setAuthToken(response.token);
+    this.setAuthToken(response.data.token);
 
     return {
-      user: this.mapBackendUser(response.user),
-      token: response.token
+      user: this.mapBackendUser(response.data.user),
+      token: response.data.token
     };
   }
 
@@ -328,17 +332,17 @@ class ChrysalisAPIService {
     user: User;
     token: string;
   }> {
-    const response = await this.request<{ user: BackendUser; token: string }>('/auth/login', {
+    const response = await this.request<{ data: { user: BackendUser; token: string } }>('/auth-login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
 
     // Store the auth token
-    this.setAuthToken(response.token);
+    this.setAuthToken(response.data.token);
 
     return {
-      user: this.mapBackendUser(response.user),
-      token: response.token
+      user: this.mapBackendUser(response.data.user),
+      token: response.data.token
     };
   }
 
@@ -350,8 +354,8 @@ class ChrysalisAPIService {
   // USER PROFILE METHODS
 
   async getProfile(): Promise<{ user: User }> {
-    const response = await this.request<{ user: BackendUser }>('/users/profile');
-    return { user: this.mapBackendUser(response.user) };
+    const response = await this.request<{ data: { user: BackendUser } }>('/users-profile');
+    return { user: this.mapBackendUser(response.data.user) };
   }
 
   async updateProfile(updates: Partial<User>): Promise<{ user: User }> {
@@ -360,21 +364,34 @@ class ChrysalisAPIService {
     if (updates.displayName !== undefined) backendUpdates.displayName = updates.displayName;
     if (updates.profilePicture !== undefined) backendUpdates.profilePicture = updates.profilePicture;
     
-    const response = await this.request<{ user: BackendUser }>('/users/profile', {
+    const response = await this.request<{ data: { user: BackendUser } }>('/users-profile', {
       method: 'PUT',
       body: JSON.stringify(backendUpdates),
     });
 
-    return { user: this.mapBackendUser(response.user) };
+    return { user: this.mapBackendUser(response.data.user) };
   }
 
   async uploadProfilePicture(file: File): Promise<{ user: User }> {
-    const formData = new FormData();
-    formData.append('image', file); // Backend expects 'image' field
+    // Validate file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+    if (file.size > maxSize) {
+      throw new Error('Image file is too large. Please choose an image smaller than 5MB.');
+    }
 
-    const url = `${this.baseUrl}/users/upload-profile-picture`;
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      throw new Error('Please select a valid image file (JPEG, PNG, GIF, or WebP).');
+    }
+
+    // For now, just send a POST request without the file data
+    // Backend will generate an avatar URL
+    const url = `${this.baseUrl}/upload-profile-picture`;
     
-    const headers: Record<string, string> = {};
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json'
+    };
     if (this.token) {
       headers.Authorization = `Bearer ${this.token}`;
     }
@@ -382,7 +399,7 @@ class ChrysalisAPIService {
     const response = await fetch(url, {
       method: 'POST',
       headers,
-      body: formData,
+      body: JSON.stringify({}),
     });
 
     if (!response.ok) {
@@ -390,9 +407,9 @@ class ChrysalisAPIService {
       throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
     }
 
-    const data = await response.json() as { user: BackendUser };
+    const data = await response.json() as { data: { user: BackendUser } };
     
-    return { user: this.mapBackendUser(data.user) };
+    return { user: this.mapBackendUser(data.data.user) };
   }
 
   // SESSION METHODS
@@ -405,32 +422,34 @@ class ChrysalisAPIService {
     message: string;
   }> {
     const response = await this.request<{
-      session: {
-        id: string;
-        userId: string;
-        duration: number;
-        frequency: string;
-        completedAt: string;
+      data: {
+        session: {
+          id: string;
+          userId: string;
+          duration: number;
+          frequency: string;
+          completedAt: string;
+          xpGained: number;
+          sessionType: string;
+          actualDuration?: number;
+          paused: boolean;
+          pauseCount: number;
+        };
+        user: BackendUser;
         xpGained: number;
-        sessionType: string;
-        actualDuration?: number;
-        paused: boolean;
-        pauseCount: number;
+        levelUp: boolean;
       };
-      user: BackendUser;
-      xpGained: number;
-      levelUp: boolean;
       message: string;
-    }>('/sessions/complete', {
+    }>('/sessions-complete', {
       method: 'POST',
       body: JSON.stringify(sessionData),
     });
 
     return {
-      session: response.session,
-      user: this.mapBackendUser(response.user),
-      xpGained: response.xpGained,
-      levelUp: response.levelUp,
+      session: response.data.session,
+      user: this.mapBackendUser(response.data.user),
+      xpGained: response.data.xpGained,
+      levelUp: response.data.levelUp,
       message: response.message
     };
   }
@@ -452,18 +471,18 @@ class ChrysalisAPIService {
         total: number;
         pages: number;
       }
-    }>('/sessions/history');
+    }>('/sessions-history');
   }
 
   async pauseSession(sessionId: string): Promise<{ message: string }> {
-    return this.request<{ message: string }>('/sessions/pause', {
+    return this.request<{ message: string }>('/sessions-pause', {
       method: 'POST',
       body: JSON.stringify({ sessionId }),
     });
   }
 
   async resumeSession(sessionId: string): Promise<{ message: string }> {
-    return this.request<{ message: string }>('/sessions/resume', {
+    return this.request<{ message: string }>('/sessions-resume', {
       method: 'POST',
       body: JSON.stringify({ sessionId }),
     });
@@ -477,15 +496,17 @@ class ChrysalisAPIService {
     type: string;
   }> {
     const response = await this.request<{
-      leaderboard: Record<string, unknown>[];
-      period: string;
-      type: string;
-    }>(`/leaderboards/global?limit=${limit}`);
+      data: {
+        leaderboard: Record<string, unknown>[];
+        period: string;
+        type: string;
+      };
+    }>(`/leaderboards-global?limit=${limit}`);
     
     return {
-      leaderboard: response.leaderboard.map(entry => this.mapLeaderboardEntry(entry)),
-      period: response.period,
-      type: response.type
+      leaderboard: response.data.leaderboard.map(entry => this.mapLeaderboardEntry(entry)),
+      period: response.data.period,
+      type: response.data.type
     };
   }
 
@@ -495,22 +516,24 @@ class ChrysalisAPIService {
     type: string;
   }> {
     const response = await this.request<{
-      leaderboard: Record<string, unknown>[];
-      period: string;
-      type: string;
-    }>('/leaderboards/friends');
+      data: {
+        leaderboard: Record<string, unknown>[];
+        period: string;
+        type: string;
+      };
+    }>('/leaderboards-friends');
     
     return {
-      leaderboard: response.leaderboard.map(entry => this.mapLeaderboardEntry(entry)),
-      period: response.period,
-      type: response.type
+      leaderboard: response.data.leaderboard.map(entry => this.mapLeaderboardEntry(entry)),
+      period: response.data.period,
+      type: response.data.type
     };
   }
 
   // SOCIAL METHODS - Friends
 
   async addFriend(friendId: string): Promise<{ message: string }> {
-    return this.request<{ message: string }>('/friends/add', {
+    return this.request<{ message: string }>('/friends-add', {
       method: 'POST',
       body: JSON.stringify({ friendId }),
     });
@@ -521,24 +544,24 @@ class ChrysalisAPIService {
     message: string; 
     friend?: { id: string; name: string; email: string }; 
   }> {
-    return this.request<{ 
+    return await this.request<{ 
       message: string; 
       friend?: { id: string; name: string; email: string }; 
-    }>('/friends/add-instant', {
+    }>('/friends-add', {
       method: 'POST',
       body: JSON.stringify({ friendCode }),
     });
   }
 
   async acceptFriendRequest(requestId: string): Promise<{ message: string }> {
-    return this.request<{ message: string }>('/friends/accept', {
+    return this.request<{ message: string }>('/friends-accept', {
       method: 'POST',
       body: JSON.stringify({ requestId }),
     });
   }
 
   async getFriends(): Promise<{ friends: Friend[] }> {
-    return this.request<{ friends: Friend[] }>('/friends/list');
+    return this.request<{ friends: Friend[] }>('/friends-list');
   }
 
   async getFriendRequests(): Promise<{
@@ -552,18 +575,18 @@ class ChrysalisAPIService {
         incoming: FriendRequest[];
         outgoing: FriendRequest[];
       };
-    }>('/friends/requests');
+    }>('/friends-requests');
   }
 
   async declineFriendRequest(requestId: string): Promise<{ message: string }> {
-    return this.request<{ message: string }>('/friends/decline', {
+    return this.request<{ message: string }>('/friends-decline', {
       method: 'POST',
       body: JSON.stringify({ requestId }),
     });
   }
 
   async removeFriend(friendId: string): Promise<{ message: string }> {
-    return this.request<{ message: string }>('/friends/remove', {
+    return this.request<{ message: string }>('/friends-remove', {
       method: 'DELETE',
       body: JSON.stringify({ friendId }),
     });
@@ -579,7 +602,7 @@ class ChrysalisAPIService {
         total_sessions: number;
         is_friend: boolean;
         has_pending_request: boolean;
-      }> }>(`/friends/search?query=${encodeURIComponent(query)}`);
+      }> }>(`/friends-search?query=${encodeURIComponent(query)}`);
       
       // Map search results to User format
       const mappedUsers = response.users.map(user => ({
@@ -613,11 +636,11 @@ class ChrysalisAPIService {
   // SOCIAL METHODS - Groups
 
   async getUserGroups(): Promise<{ groups: Group[] }> {
-    return this.request<{ groups: Group[] }>('/groups/list');
+    return this.request<{ groups: Group[] }>('/groups-list');
   }
 
   async getPublicGroups(): Promise<{ groups: Group[] }> {
-    return this.request<{ groups: Group[] }>('/groups/public');
+    return this.request<{ groups: Group[] }>('/groups-list');
   }
 
   async createGroup(groupData: {
@@ -628,7 +651,7 @@ class ChrysalisAPIService {
     max_members?: number;
     meditation_focus?: string;
   }): Promise<{ groupId: string; code: string; message: string }> {
-    return this.request<{ groupId: string; code: string; message: string }>('/groups/create', {
+    return this.request<{ groupId: string; code: string; message: string }>('/groups-create', {
       method: 'POST',
       body: JSON.stringify(groupData),
     });
@@ -647,7 +670,7 @@ class ChrysalisAPIService {
     return this.request<{ 
       message: string; 
       group: { id: string; name: string; description: string; groupCode: string }
-    }>('/groups/join-by-code', {
+    }>('/groups-join', {
       method: 'POST',
       body: JSON.stringify({ groupCode }),
     });

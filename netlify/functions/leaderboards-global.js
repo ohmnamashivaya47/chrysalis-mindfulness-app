@@ -32,13 +32,14 @@ const handler = async (event, context) => {
     const rankedUsers = topUsers.map((user, index) => ({
       rank: index + 1,
       id: user.id,
-      displayName: user.displayName,
-      profilePicture: user.profilePicture,
-      totalMinutes: user.totalMinutes,
-      totalSessions: user.totalSessions,
-      currentStreak: user.currentStreak,
-      level: user.level,
-      experience: user.experience
+      display_name: user.display_name,
+      profile_picture: user.profile_picture,
+      total_minutes: user.total_minutes || 0,
+      total_sessions: user.total_sessions || 0,
+      weekly_minutes: user.weekly_minutes || 0,
+      current_streak: user.current_streak || 0,
+      level: user.level || 1,
+      experience: user.experience || 0
     }));
 
     return responseHelpers.success({

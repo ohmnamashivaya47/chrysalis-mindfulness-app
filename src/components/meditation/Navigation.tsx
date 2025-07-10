@@ -10,14 +10,6 @@ const iconMap = {
   '/profile': User,
 }
 
-const routeLabels = {
-  '/': 'Meditate',
-  '/leaderboard': 'Leaderboard',
-  '/groups': 'Groups',
-  '/friends': 'Friends',
-  '/profile': 'Profile',
-}
-
 export const Navigation = () => {
   const navigate = useNavigate()
   const location = useLocation()

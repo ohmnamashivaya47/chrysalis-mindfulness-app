@@ -1,7 +1,7 @@
 // CHRYSALIS - User Login Function
 // Handles user authentication and session management
 
-const { userHelpers } = require('./lib/neon-db.js');
+const { userHelpers, initDB } = require('./lib/neon-db.js');
 const { authUtils, responseHelpers, inputValidation, errorHandler } = require('./lib/auth-utils.js');
 
 exports.handler = async (event, context) => {
@@ -16,6 +16,9 @@ exports.handler = async (event, context) => {
   }
 
   try {
+    // Initialize database
+    await initDB();
+    
     // Parse request body
     const { email, password } = JSON.parse(event.body || '{}');
 

@@ -2,6 +2,9 @@
 const jwt = require('jsonwebtoken');
 const { getStore } = require('@netlify/blobs');
 
+// JWT Configuration - Same as auth-utils
+const JWT_SECRET = process.env.JWT_SECRET || 'chrysalis-meditation-app-secret-key-production-2024';
+
 // Initialize stores
 const sessionsStore = getStore('sessions');
 const usersStore = getStore('users');
@@ -19,7 +22,7 @@ const helpers = {
 
     const token = authHeader.split(' ')[1];
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = jwt.verify(token, JWT_SECRET);
       return decoded;
     } catch (error) {
       return null;

@@ -1,7 +1,7 @@
 // CHRYSALIS - User Registration Function
 // Handles new user account creation with validation and security
 
-const { userHelpers, validators } = require('./lib/neon-db.js');
+const { userHelpers, validators, initDB } = require('./lib/neon-db.js');
 const { authUtils, responseHelpers, inputValidation, errorHandler } = require('./lib/auth-utils.js');
 
 exports.handler = async (event, context) => {
@@ -16,6 +16,8 @@ exports.handler = async (event, context) => {
   }
 
   try {
+    // Initialize database
+    await initDB();
     // Parse request body
     const { email, password, displayName } = JSON.parse(event.body || '{}');
 

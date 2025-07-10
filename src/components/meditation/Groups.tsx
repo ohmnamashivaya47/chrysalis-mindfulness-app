@@ -32,6 +32,7 @@ export const Groups = () => {
   const [createdGroupCode, setCreatedGroupCode] = useState<string | null>(null)
   const [showQRModal, setShowQRModal] = useState<string | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [hasError, setHasError] = useState(false)
 
   const { 
     getPublicGroups, 
@@ -43,6 +44,7 @@ export const Groups = () => {
 
   const loadGroups = useCallback(async () => {
     setLoading(true)
+    setHasError(false)
     try {
       // Try to load groups data, but don't crash if it fails
       try {
@@ -62,6 +64,7 @@ export const Groups = () => {
       }
     } catch {
       console.log('Groups feature is still loading. This is normal for new accounts.')
+      setHasError(true)
     }
     setLoading(false)
   }, [getPublicGroups, getUserGroups])
@@ -193,6 +196,20 @@ export const Groups = () => {
           </div>
         )}
       </div>
+
+      {/* Error State */}
+      {hasError && (
+        <div className="text-center py-8">
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+            <p className="text-gray-600 mb-4">
+              Groups feature is still loading. This is normal for new accounts.
+            </p>
+            <Button onClick={loadGroups} disabled={loading}>
+              {loading ? 'Loading...' : 'Try Again'}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* My Groups */}
       <div className="space-y-4">

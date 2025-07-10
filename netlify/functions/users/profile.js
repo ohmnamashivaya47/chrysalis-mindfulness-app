@@ -1,10 +1,10 @@
 // CHRYSALIS - User Profile Management Function
 // Get and update user profile information
 
-import { userHelpers } from '../lib/neon-db.js';
-import { authUtils, responseHelpers, inputValidation, errorHandler } from '../lib/auth-utils.js';
+const { userHelpers } = require('../lib/neon-db.js');
+const { authUtils, responseHelpers, inputValidation, errorHandler } = require('../lib/auth-utils.js');
 
-export const handler = async (event, context) => {
+const handler = async (event, context) => {
   // Handle CORS preflight requests
   if (event.httpMethod === 'OPTIONS') {
     return responseHelpers.cors();
@@ -99,3 +99,5 @@ export const handler = async (event, context) => {
     return errorHandler.handleError(error, 'User Profile');
   }
 };
+
+module.exports = { handler };

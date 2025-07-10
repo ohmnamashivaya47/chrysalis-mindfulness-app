@@ -5,7 +5,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 
 // JWT Configuration
-const JWT_SECRET = process.env.JWT_SECRET || 'chrysalis-meditation-app-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET || 'chrysalis-meditation-app-secret-key-production-2024';
 const JWT_EXPIRES_IN = '7d';
 
 // Authentication helper functions
