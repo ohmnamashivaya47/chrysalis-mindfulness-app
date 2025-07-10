@@ -1,10 +1,5 @@
-// Wisdom Quotes Function using Netlify Blobs
-const { getStore } = require('@netlify/blobs');
-
-// Initialize quotes store
-const quotesStore = getStore('quotes');
-
-// Sample wisdom quotes for initialization
+// Wisdom Quotes Function - Simple in-memory implementation
+// Sample wisdom quotes for the app
 const sampleQuotes = [
   {
     id: 'q1',
@@ -29,38 +24,38 @@ const sampleQuotes = [
   },
   {
     id: 'q4',
-    text: "Peace comes from within. Do not seek it without.",
+    text: "The mind is everything. What you think you become.",
     author: "Buddha",
-    category: "peace",
-    tags: ["inner peace", "wisdom", "seeking"]
+    category: "mindfulness",
+    tags: ["mind", "thoughts", "becoming"]
   },
   {
     id: 'q5',
-    text: "The only way to make sense out of change is to plunge into it, move with it, and join the dance.",
-    author: "Alan Watts",
-    category: "change",
-    tags: ["change", "adaptation", "flow"]
+    text: "Peace comes from within. Do not seek it without.",
+    author: "Buddha",
+    category: "inner peace",
+    tags: ["peace", "inner", "seeking"]
   },
   {
     id: 'q6',
-    text: "Mindfulness is about being fully awake in our lives. It is about perceiving the exquisite vividness of each moment.",
-    author: "Jon Kabat-Zinn",
-    category: "mindfulness",
-    tags: ["awareness", "vivid", "moment"]
+    text: "You are the sky, everything else is just the weather.",
+    author: "Pema Chödrön",
+    category: "perspective",
+    tags: ["sky", "weather", "perspective"]
   },
   {
     id: 'q7',
-    text: "The best way to live is by not knowing what will happen to you each day.",
-    author: "Donald Barthelme",
-    category: "uncertainty",
-    tags: ["unknown", "living", "surprise"]
+    text: "The only way out is through.",
+    author: "Robert Frost",
+    category: "perseverance",
+    tags: ["way", "through", "perseverance"]
   },
   {
     id: 'q8',
-    text: "In the midst of winter, I found there was, within me, an invincible summer.",
-    author: "Albert Camus",
-    category: "resilience",
-    tags: ["strength", "inner power", "seasons"]
+    text: "In the middle of difficulty lies opportunity.",
+    author: "Albert Einstein",
+    category: "opportunity",
+    tags: ["difficulty", "opportunity", "challenges"]
   },
   {
     id: 'q9',
@@ -78,168 +73,74 @@ const sampleQuotes = [
   }
 ];
 
-const helpers = {
-  async initializeQuotes() {
-    try {
-      // Check if quotes are already initialized
-      const quotesData = await quotesStore.get('daily_quotes');
-      if (quotesData) return;
+// Get daily quote based on current date
+function getDailyQuote() {
+  const today = new Date();
+  const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / (24 * 60 * 60 * 1000));
+  const quoteIndex = dayOfYear % sampleQuotes.length;
+  return sampleQuotes[quoteIndex];
+}
 
-      // Initialize with sample quotes
-      await quotesStore.set('daily_quotes', JSON.stringify(sampleQuotes));
-    } catch (error) {
-      console.error('Error initializing quotes:', error);
-    }
-  },
+// Get random quote
+function getRandomQuote() {
+  const randomIndex = Math.floor(Math.random() * sampleQuotes.length);
+  return sampleQuotes[randomIndex];
+}
 
-  async getDailyQuote() {
-    try {
-      await this.initializeQuotes();
-      const quotesData = await quotesStore.get('daily_quotes');
-      const quotes = JSON.parse(quotesData);
-      
-      // Select quote based on day of year for consistency
-      const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
-      const selectedQuote = quotes[dayOfYear % quotes.length];
-      
-      return selectedQuote;
-    } catch (error) {
-      console.error('Error getting daily quote:', error);
-      return sampleQuotes[0]; // Fallback to first quote
-    }
-  },
-
-  async getAllQuotes() {
-    try {
-      await this.initializeQuotes();
-      const quotesData = await quotesStore.get('daily_quotes');
-      return JSON.parse(quotesData);
-    } catch (error) {
-      console.error('Error getting all quotes:', error);
-      return sampleQuotes;
-    }
-  },
-
-  async getRandomQuote() {
-    try {
-      const quotes = await this.getAllQuotes();
-      const randomIndex = Math.floor(Math.random() * quotes.length);
-      return quotes[randomIndex];
-    } catch (error) {
-      console.error('Error getting random quote:', error);
-      return sampleQuotes[0];
-    }
-  },
-
-  async getQuotesByCategory(category) {
-    try {
-      const quotes = await this.getAllQuotes();
-      return quotes.filter(quote => quote.category === category);
-    } catch (error) {
-      console.error('Error getting quotes by category:', error);
-      return [];
-    }
-  }
-};
-
+// Main handler
 exports.handler = async (event, context) => {
-  // CORS headers
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Content-Type': 'application/json'
   };
 
-  // Handle preflight requests
   if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 200,
-      headers,
-      body: ''
-    };
+    return { statusCode: 200, headers };
   }
 
   try {
-    const path = event.path.replace('/.netlify/functions/wisdom-quotes', '');
+    const path = event.path || '';
     const method = event.httpMethod;
 
-    // Get Daily Quote
-    if (path === '/daily' && method === 'GET') {
-      const dailyQuote = await helpers.getDailyQuote();
-
+    if (method === 'GET' && path.includes('/daily')) {
+      // Get daily quote
+      const quote = getDailyQuote();
       return {
         statusCode: 200,
         headers,
-        body: JSON.stringify({
-          success: true,
-          data: { dailyQuote }
-        })
+        body: JSON.stringify(quote)
       };
-    }
-
-    // Get Random Quote
-    if (path === '/random' && method === 'GET') {
-      const randomQuote = await helpers.getRandomQuote();
-
+    } else if (method === 'GET' && path.includes('/random')) {
+      // Get random quote
+      const quote = getRandomQuote();
       return {
         statusCode: 200,
         headers,
-        body: JSON.stringify({
-          success: true,
-          data: { quote: randomQuote }
-        })
+        body: JSON.stringify(quote)
       };
-    }
-
-    // Get All Quotes
-    if (path === '' && method === 'GET') {
-      const quotes = await helpers.getAllQuotes();
-
+    } else if (method === 'GET') {
+      // Default: get daily quote
+      const quote = getDailyQuote();
       return {
         statusCode: 200,
         headers,
-        body: JSON.stringify({
-          success: true,
-          data: { quotes }
-        })
+        body: JSON.stringify(quote)
       };
-    }
-
-    // Get Quotes by Category
-    if (path.startsWith('/category/') && method === 'GET') {
-      const category = path.replace('/category/', '');
-      const quotes = await helpers.getQuotesByCategory(category);
-
+    } else {
       return {
-        statusCode: 200,
+        statusCode: 405,
         headers,
-        body: JSON.stringify({
-          success: true,
-          data: { quotes, category }
-        })
+        body: JSON.stringify({ error: 'Method not allowed' })
       };
     }
-
-    // Route not found
-    return {
-      statusCode: 404,
-      headers,
-      body: JSON.stringify({
-        success: false,
-        error: 'Route not found'
-      })
-    };
-
   } catch (error) {
-    console.error('Wisdom quotes function error:', error);
+    console.error('Error:', error);
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({
-        success: false,
-        error: 'Internal server error'
-      })
+      body: JSON.stringify({ error: 'Internal server error' })
     };
   }
 };
