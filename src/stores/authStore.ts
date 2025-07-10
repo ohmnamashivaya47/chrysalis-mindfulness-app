@@ -149,8 +149,27 @@ export const useAuthStore = create<AuthState>((set) => ({
   completeOnboarding: () => set({ showOnboarding: false })
 }))
 
-// Initialize auth state on app load
+// Initialize auth state on app load and set up cross-device sync
 if (typeof window !== 'undefined') {
   const { refreshUser } = useAuthStore.getState()
   refreshUser()
+
+  // Refresh user data when the app becomes visible again (cross-device sync)
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      const { user } = useAuthStore.getState()
+      if (user) {
+        // Refresh user data when app becomes visible
+        refreshUser()
+      }
+    }
+  })
+
+  // Also refresh on window focus
+  window.addEventListener('focus', () => {
+    const { user } = useAuthStore.getState()
+    if (user) {
+      refreshUser()
+    }
+  })
 }

@@ -80,11 +80,21 @@ export const Leaderboard = ({ refreshKey }: LeaderboardProps) => {
 
   useEffect(() => {
     fetchLeaderboard(activeBoard);
-    // Optionally, add a timer to auto-refresh after meditation session completion
-    // const interval = setInterval(() => {
-    //   fetchLeaderboard(activeBoard);
-    // }, 60000); // Refresh every minute
-    // return () => clearInterval(interval);
+    
+    // Add visibility change listener for cross-device sync
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchLeaderboard(activeBoard);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleVisibilityChange);
+    };
   }, [activeBoard, refreshKey, fetchLeaderboard]);
 
   // Focus management for error/refresh

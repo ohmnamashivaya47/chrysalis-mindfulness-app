@@ -1,5 +1,10 @@
 import Friends from '../components/meditation/Friends'
+import ErrorBoundary from '../components/ErrorBoundary'
 
 export const FriendsPage = () => {
-  return <Friends />
+  return (
+    <ErrorBoundary>
+      <Friends />
+    </ErrorBoundary>
+  )
 }

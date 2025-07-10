@@ -407,9 +407,9 @@ class ChrysalisAPIService {
       throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
     }
 
-    const data = await response.json() as { data: { user: BackendUser } };
+    const response_data = await response.json() as { data: { user: BackendUser } };
     
-    return { user: this.mapBackendUser(data.data.user) };
+    return { user: this.mapBackendUser(response_data.data.user) };
   }
 
   // SESSION METHODS

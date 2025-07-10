@@ -18,13 +18,17 @@ const Friends: React.FC = () => {
   useEffect(() => {
     if (user) {
       setMyFriendCode(user.id);
-      try {
-        fetchFriends();
-        fetchFriendRequests();
-      } catch (error) {
-        console.error('Error loading friends:', error);
-        setHasError(true);
-      }
+      const loadFriendsData = async () => {
+        try {
+          setHasError(false);
+          await fetchFriends();
+          await fetchFriendRequests();
+        } catch (error) {
+          console.error('Error loading friends:', error);
+          setHasError(true);
+        }
+      };
+      loadFriendsData();
     }
   }, [user, fetchFriends, fetchFriendRequests]);
 

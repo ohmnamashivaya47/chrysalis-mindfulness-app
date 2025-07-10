@@ -95,12 +95,15 @@ export const useSocialStore = create<SocialState>((set, get) => ({
     try {
       const response = await apiService.getFriends();
       set({ 
-        friends: response.friends,
+        friends: response.friends || [],
         isLoadingFriends: false 
       });
     } catch (error) {
       console.error('Failed to fetch friends:', error);
-      set({ isLoadingFriends: false });
+      set({ 
+        friends: [], // Fallback to empty array
+        isLoadingFriends: false 
+      });
     }
   },
 
@@ -111,14 +114,20 @@ export const useSocialStore = create<SocialState>((set, get) => ({
       const response = await apiService.getFriendRequests();
       set({ 
         friendRequests: {
-          incoming: response.requests.incoming,
-          outgoing: response.requests.outgoing,
+          incoming: response.requests?.incoming || [],
+          outgoing: response.requests?.outgoing || [],
         },
         isLoadingRequests: false 
       });
     } catch (error) {
       console.error('Failed to fetch friend requests:', error);
-      set({ isLoadingRequests: false });
+      set({ 
+        friendRequests: {
+          incoming: [],
+          outgoing: [],
+        },
+        isLoadingRequests: false 
+      });
     }
   },
 
